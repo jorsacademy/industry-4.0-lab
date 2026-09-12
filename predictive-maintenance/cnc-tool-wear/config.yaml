@@ -6,7 +6,7 @@ data:
   experiment_glob: experiment_*.csv
   expected_experiments: 18
   sample_period_seconds: 0.1
-  drop_known_artifact_rows: true
+  mask_known_artifact_values: true
 
 features:
   window_size: 50
