@@ -30,6 +30,22 @@ The benchmark compares three sensor configurations:
 
 Each modality is evaluated with logistic regression, Random Forest and Extra Trees. Model selection uses macro-F1 first and balanced accuracy second so that all eight operating conditions matter.
 
+## Verified blocked benchmark
+
+The public source release was downloaded and validated in GitHub Actions before fitting. The validated feature table contains **2,000 windows**, eight balanced operating conditions, **69 vibration features**, **100 audio features**, and 169 features under sensor fusion.
+
+The best same-session purged/blocked result is **early fusion + logistic regression**:
+
+| Sensor configuration / model | Macro-F1 | Balanced accuracy |
+|---|---:|---:|
+| Fusion + Logistic Regression | **0.9320** | **0.9325** |
+| Audio + Logistic Regression | 0.8549 | 0.8550 |
+| Vibration + Random Forest | 0.8499 | 0.8550 |
+
+Fusion improves macro-F1 by about **0.077 absolute** over the strongest single-modality result, showing that structure-borne and airborne measurements carry complementary information inside these recordings. The selected five-fold macro-F1 standard deviation is **0.0140**.
+
+These numbers are deliberately not described as field generalization. All folds still come from the same single recording session per condition. The purge removes direct overlap leakage from the 80%-overlapping STFT windows, but it cannot manufacture the missing independent sessions needed for a production-grade generalization claim.
+
 ### Diagnostic outputs
 
 The project commits the full model/modality comparison, blocked out-of-fold predictions, confusion matrix and per-class report. The fitted full-data model is uploaded as a workflow artifact rather than committed as a binary.
