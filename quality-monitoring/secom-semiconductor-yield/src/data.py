@@ -15,27 +15,39 @@ class TimeBlocks:
     test: pd.DataFrame
 
 
+def _load_labels(labels_path: Path) -> pd.DataFrame:
+    records: list[tuple[int, str]] = []
+    for line_number, raw_line in enumerate(labels_path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            label_text, timestamp_text = line.split(maxsplit=1)
+        except ValueError as exc:
+            raise ValueError(f"Malformed SECOM label record at line {line_number}: {raw_line!r}") from exc
+        timestamp_text = timestamp_text.strip().strip('"').strip("'")
+        records.append((int(label_text), timestamp_text))
+    if not records:
+        raise ValueError(f"No label records found in {labels_path}")
+    labels = pd.DataFrame(records, columns=["raw_label", "timestamp_text"])
+    labels["timestamp"] = pd.to_datetime(
+        labels["timestamp_text"],
+        format="%d/%m/%Y %H:%M:%S",
+        errors="raise",
+    )
+    return labels
+
+
 def load_secom(data_path: str | Path, labels_path: str | Path) -> pd.DataFrame:
     data_path = Path(data_path)
     labels_path = Path(labels_path)
     X = pd.read_csv(data_path, sep=r"\s+", header=None, na_values=["NaN"])
     X.columns = [f"V{i:03d}" for i in range(X.shape[1])]
-    labels = pd.read_csv(
-        labels_path,
-        sep=r"\s+",
-        header=None,
-        names=["raw_label", "date", "time"],
-        dtype={"raw_label": int, "date": str, "time": str},
-    )
+    labels = _load_labels(labels_path)
     if len(X) != len(labels):
         raise ValueError(f"Feature/label row mismatch: {len(X)} vs {len(labels)}")
-    timestamp = pd.to_datetime(
-        labels["date"].astype(str) + " " + labels["time"].astype(str),
-        format="%d/%m/%Y %H:%M:%S",
-        errors="raise",
-    )
     out = X.copy()
-    out["timestamp"] = timestamp
+    out["timestamp"] = labels["timestamp"].to_numpy()
     out["raw_label"] = labels["raw_label"].astype(int).to_numpy()
     out["is_fail"] = out["raw_label"].eq(1).astype(int)
     out["source_row"] = np.arange(len(out), dtype=int)
