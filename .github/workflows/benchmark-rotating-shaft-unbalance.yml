@@ -5,8 +5,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "predictive-maintenance/rotating-shaft-unbalance-generalization/**"
-      - ".github/workflows/benchmark-rotating-shaft-unbalance.yml"
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/config.yaml"
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/requirements.txt"
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/src/**"
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/scripts/**"
 
 permissions:
   contents: write
