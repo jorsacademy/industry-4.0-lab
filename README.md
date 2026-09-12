@@ -1,32 +1,21 @@
 # Industry 4.0 Lab
 
-A compact portfolio of applied Industry 4.0 projects focused on smart manufacturing, industrial AI, operations research, simulation, quality engineering, and decision support.
+A curated portfolio of applied Industry 4.0 projects built around cyber-physical production systems, industrial sensing, IIoT, PLC/SCADA data, condition monitoring, predictive maintenance, process analytics, digital twins, and optimization.
+
+## Inclusion criteria
+
+Projects are included only when they have a clear industrial data or cyber-physical context. Preferred datasets contain one or more of the following:
+
+- time-series measurements from industrial sensors;
+- vibration, temperature, pressure, current, voltage, acoustic, force, torque, flow, or similar process signals;
+- PLC, SCADA, historian, MES, or machine-event data;
+- IIoT telemetry and equipment-state information;
+- condition-monitoring or predictive-maintenance signals;
+- production-process variables suitable for monitoring, diagnosis, control, or optimization;
+- multimodal industrial data where vision is tied to real production-system telemetry or traceability.
+
+Synthetic or purely illustrative computer-vision exercises without a meaningful cyber-physical or industrial telemetry layer are excluded.
 
 ## Project map
 
-| # | Area | Project | Problem | Status |
-|---|---|---|---|---|
-| 01 | Computer Vision | [Visual Anomaly Detection](computer-vision/visual-anomaly-detection/) | Detect previously unseen manufacturing defects using normal-only training | Ready |
-
-## Design principles
-
-- Each project is self-contained and reproducible.
-- Industrial context comes before model complexity.
-- Validation includes operational metrics, not only model loss.
-- Raw datasets, model weights, and generated artifacts stay out of Git.
-- Projects are structured so stronger methods can replace the baseline without changing the surrounding workflow.
-
-## Repository layout
-
-```text
-industry-4.0-lab/
-├── computer-vision/
-│   └── visual-anomaly-detection/
-├── optimization/
-├── simulation/
-├── predictive-maintenance/
-├── industrial-iot/
-└── docs/
-```
-
-New projects will be added incrementally under the relevant Industry 4.0 domain.
+Projects will be added incrementally after dataset and problem validation.
