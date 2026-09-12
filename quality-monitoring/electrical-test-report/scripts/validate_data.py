@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import yaml
 
@@ -8,10 +13,10 @@ from src.data import load_electrical_report, measurement_columns
 
 
 def main() -> None:
-    cfg = yaml.safe_load(Path("config.yaml").read_text())
+    cfg = yaml.safe_load((PROJECT_ROOT / "config.yaml").read_text())
     data_cfg = cfg["data"]
     expected = cfg["validation"]
-    path = Path(data_cfg["path"])
+    path = PROJECT_ROOT / data_cfg["path"]
     if not path.exists():
         raise FileNotFoundError(f"Missing {path}. Run: python scripts/download_data.py")
 
