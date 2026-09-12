@@ -9,7 +9,7 @@ import joblib
 import pandas as pd
 
 from .config import load_config, project_path
-from .data import known_artifact_mask, load_experiment
+from .data import known_artifact_mask, load_experiment, mask_known_artifact_values
 from .features import extract_window_features
 
 
@@ -25,13 +25,17 @@ def replay(experiment_path: str | Path, config_path: str | Path, emit_every: int
     expected = list(metadata["feature_columns_numeric"]) + list(metadata["feature_columns_categorical"])
     threshold = float(metadata["probability_threshold"])
     sample_period = float(metadata["sample_period_seconds"])
+    mask_artifacts = bool(metadata["mask_known_artifact_values"])
     buffer: deque[dict[str, object]] = deque(maxlen=window_size)
 
     for row_number, row in enumerate(frame.to_dict(orient="records"), start=1):
         one_row = pd.DataFrame([row])
-        if bool(metadata["drop_known_artifact_rows"]) and bool(known_artifact_mask(one_row).iloc[0]):
-            continue
-        buffer.append(row)
+        if mask_artifacts:
+            one_row = mask_known_artifact_values(one_row)
+        else:
+            one_row["_known_artifact"] = known_artifact_mask(one_row).astype(int)
+        buffer.append(one_row.iloc[0].to_dict())
+
         if len(buffer) < window_size or row_number % emit_every != 0:
             continue
 
