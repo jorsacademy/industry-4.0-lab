@@ -16,8 +16,7 @@ TABLE_SPECS = {
 
 
 def normalize_heatid(series: pd.Series) -> pd.Series:
-    text = series.astype(str).str.strip()
-    return text.str.replace(r"\.0$", "", regex=True)
+    return series.astype(str).str.strip().str.replace(r"\.0$", "", regex=True)
 
 
 def to_numeric(series: pd.Series) -> pd.Series:
@@ -60,143 +59,151 @@ def load_tables(raw_dir: str | Path) -> dict[str, pd.DataFrame]:
     return tables
 
 
-def _num(frame: pd.DataFrame, column: str) -> pd.Series:
-    if column not in frame.columns:
-        return pd.Series(dtype=float)
-    return to_numeric(frame[column])
+def _ensure_numeric(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    out = frame.copy()
+    for col in columns:
+        if col not in out.columns:
+            out[col] = np.nan
+        else:
+            out[col] = to_numeric(out[col])
+    return out
 
 
-def _last_valid(series: pd.Series) -> float:
-    valid = series.dropna()
-    return float(valid.iloc[-1]) if len(valid) else np.nan
+def _observable(frame: pd.DataFrame, snapshot_lookup: pd.Series) -> pd.DataFrame:
+    subset = frame[frame["HEATID"].isin(snapshot_lookup.index) & frame["_TS"].notna()].copy()
+    subset["_SNAPSHOT"] = subset["HEATID"].map(snapshot_lookup)
+    return subset[subset["_TS"] <= subset["_SNAPSHOT"]].sort_values(["HEATID", "_TS"])
 
 
-def _delta(series: pd.Series) -> float:
-    valid = series.dropna()
-    if len(valid) < 2:
-        return float(valid.iloc[-1]) if len(valid) else 0.0
-    return float(valid.iloc[-1] - valid.iloc[0])
-
-
-def _group_by_heat(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
-    ordered = frame[frame["_TS"].notna()].sort_values(["HEATID", "_TS"])
-    return {str(heatid): group for heatid, group in ordered.groupby("HEATID", sort=False)}
-
-
-def _before(grouped: dict[str, pd.DataFrame], heatid: str, snapshot: pd.Timestamp) -> pd.DataFrame:
-    group = grouped.get(str(heatid))
-    if group is None:
-        return pd.DataFrame()
-    return group[group["_TS"] <= snapshot]
-
-
-def _event_min_time(grouped_tables: dict[str, dict[str, pd.DataFrame]], heatid: str, snapshot: pd.Timestamp):
-    times: list[pd.Timestamp] = []
-    for grouped in grouped_tables.values():
-        subset = _before(grouped, heatid, snapshot)
-        if len(subset):
-            times.append(subset["_TS"].iloc[0])
-    return min(times) if times else pd.NaT
+def _merge_features(base: pd.DataFrame, features: pd.DataFrame) -> pd.DataFrame:
+    if features.empty:
+        return base
+    return base.merge(features.reset_index(), on="HEATID", how="left")
 
 
 def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    prepared = {name: frame.copy() for name, frame in tables.items()}
-    temp = prepared["temperature"]
-    temp["TEMP"] = to_numeric(temp["TEMP"])
-    if "VALO2_PPM" in temp.columns:
-        temp["VALO2_PPM"] = to_numeric(temp["VALO2_PPM"])
-    prepared["temperature"] = temp
-    grouped_tables = {name: _group_by_heat(frame) for name, frame in prepared.items()}
+    temp = _ensure_numeric(tables["temperature"], ["TEMP", "VALO2_PPM"])
+    temp = temp[temp["_TS"].notna() & temp["TEMP"].notna()].sort_values(["HEATID", "_TS"]).copy()
+    if temp.empty:
+        return pd.DataFrame()
 
-    rows: list[dict[str, object]] = []
-    for heatid, group in grouped_tables["temperature"].items():
-        g = group[group["TEMP"].notna()].sort_values("_TS")
-        if len(g) < 2:
-            continue
-        target = g.iloc[-1]
-        snapshot_row = g.iloc[-2]
-        snapshot = snapshot_row["_TS"]
-        target_time = target["_TS"]
-        if pd.isna(snapshot) or pd.isna(target_time) or target_time <= snapshot:
-            continue
+    temp["_FROM_END"] = temp.groupby("HEATID").cumcount(ascending=False)
+    target = temp[temp["_FROM_END"] == 0][["HEATID", "_TS", "TEMP"]].rename(
+        columns={"_TS": "target_time", "TEMP": "target_temp"}
+    )
+    snap = temp[temp["_FROM_END"] == 1][["HEATID", "_TS", "TEMP"]].rename(
+        columns={"_TS": "snapshot_time", "TEMP": "snapshot_temp"}
+    )
+    snapshots = snap.merge(target, on="HEATID", how="inner")
+    snapshots = snapshots[snapshots["target_time"] > snapshots["snapshot_time"]].copy()
+    if snapshots.empty:
+        return snapshots
 
-        history_temp = g[g["_TS"] <= snapshot]
-        positive_o2 = pd.Series(dtype=float)
-        if "VALO2_PPM" in history_temp.columns:
-            positive_o2 = history_temp.loc[history_temp["VALO2_PPM"] > 0, "VALO2_PPM"]
+    counts = temp.groupby("HEATID").size().rename("temperature_measurements")
+    snapshots["prior_temp_measurements"] = snapshots["HEATID"].map(counts).astype(int) - 1
+    snapshots["forecast_horizon_min"] = (
+        snapshots["target_time"] - snapshots["snapshot_time"]
+    ).dt.total_seconds() / 60.0
+    snapshot_lookup = snapshots.set_index("HEATID")["snapshot_time"]
 
-        record: dict[str, object] = {
-            "HEATID": str(heatid),
-            "snapshot_time": snapshot,
-            "target_time": target_time,
-            "target_temp": float(target["TEMP"]),
-            "snapshot_temp": float(snapshot_row["TEMP"]),
-            "snapshot_o2_ppm": _last_valid(positive_o2),
-            "prior_temp_measurements": int(len(history_temp)),
-            "forecast_horizon_min": float((target_time - snapshot).total_seconds() / 60.0),
-        }
+    temp_history = _observable(temp.drop(columns=["_FROM_END"]), snapshot_lookup)
+    positive_o2 = temp_history[temp_history["VALO2_PPM"] > 0]
+    if len(positive_o2):
+        latest_o2 = positive_o2.groupby("HEATID")["VALO2_PPM"].last().rename("snapshot_o2_ppm")
+        snapshots = _merge_features(snapshots, latest_o2.to_frame())
+    else:
+        snapshots["snapshot_o2_ppm"] = np.nan
 
-        earliest = _event_min_time(grouped_tables, str(heatid), snapshot)
-        record["elapsed_to_snapshot_min"] = (
-            float((snapshot - earliest).total_seconds() / 60.0) if pd.notna(earliest) else np.nan
+    event_min_parts = [temp_history.groupby("HEATID")["_TS"].min()]
+
+    transformer = _observable(tables["transformer"], snapshot_lookup)
+    transformer = _ensure_numeric(transformer, ["MW", "DURATION", "TAP"])
+    if len(transformer):
+        tr = transformer.groupby("HEATID").agg(
+            transformer_segments=("_TS", "size"),
+            transformer_mw_sum=("MW", "sum"),
+            transformer_mw_mean=("MW", "mean"),
+            transformer_duration_sum=("DURATION", "sum"),
+            transformer_tap_mean=("TAP", "mean"),
+            transformer_tap_last=("TAP", "last"),
         )
+        snapshots = _merge_features(snapshots, tr)
+        event_min_parts.append(transformer.groupby("HEATID")["_TS"].min())
 
-        transformer = _before(grouped_tables["transformer"], str(heatid), snapshot)
-        mw = _num(transformer, "MW")
-        duration = _num(transformer, "DURATION")
-        tap = _num(transformer, "TAP")
-        record.update({
-            "transformer_segments": int(len(transformer)),
-            "transformer_mw_sum": float(mw.sum(skipna=True)) if len(mw) else 0.0,
-            "transformer_mw_mean": float(mw.mean(skipna=True)) if mw.notna().any() else np.nan,
-            "transformer_duration_sum": float(duration.sum(skipna=True)) if len(duration) else 0.0,
-            "transformer_tap_mean": float(tap.mean(skipna=True)) if tap.notna().any() else np.nan,
-            "transformer_tap_last": _last_valid(tap),
-        })
+    gas = _observable(tables["gas"], snapshot_lookup)
+    gas = _ensure_numeric(gas, ["O2_AMOUNT", "GAS_AMOUNT", "O2_FLOW", "GAS_FLOW"])
+    if len(gas):
+        gg = gas.groupby("HEATID")
+        gas_agg = gg.agg(
+            gas_events=("_TS", "size"),
+            o2_amount_first=("O2_AMOUNT", "first"),
+            o2_amount_last=("O2_AMOUNT", "last"),
+            gas_amount_first=("GAS_AMOUNT", "first"),
+            gas_amount_last=("GAS_AMOUNT", "last"),
+            o2_flow_mean=("O2_FLOW", "mean"),
+            o2_flow_max=("O2_FLOW", "max"),
+            gas_flow_mean=("GAS_FLOW", "mean"),
+            gas_flow_max=("GAS_FLOW", "max"),
+        )
+        gas_agg["o2_amount_delta"] = gas_agg["o2_amount_last"] - gas_agg["o2_amount_first"]
+        gas_agg["gas_amount_delta"] = gas_agg["gas_amount_last"] - gas_agg["gas_amount_first"]
+        gas_agg = gas_agg.drop(columns=["o2_amount_first", "gas_amount_first"])
+        snapshots = _merge_features(snapshots, gas_agg)
+        event_min_parts.append(gas.groupby("HEATID")["_TS"].min())
 
-        gas = _before(grouped_tables["gas"], str(heatid), snapshot)
-        o2_amount = _num(gas, "O2_AMOUNT")
-        gas_amount = _num(gas, "GAS_AMOUNT")
-        o2_flow = _num(gas, "O2_FLOW")
-        gas_flow = _num(gas, "GAS_FLOW")
-        record.update({
-            "gas_events": int(len(gas)),
-            "o2_amount_last": _last_valid(o2_amount),
-            "o2_amount_delta": _delta(o2_amount),
-            "gas_amount_last": _last_valid(gas_amount),
-            "gas_amount_delta": _delta(gas_amount),
-            "o2_flow_mean": float(o2_flow.mean(skipna=True)) if o2_flow.notna().any() else np.nan,
-            "o2_flow_max": float(o2_flow.max(skipna=True)) if o2_flow.notna().any() else np.nan,
-            "gas_flow_mean": float(gas_flow.mean(skipna=True)) if gas_flow.notna().any() else np.nan,
-            "gas_flow_max": float(gas_flow.max(skipna=True)) if gas_flow.notna().any() else np.nan,
-        })
+    carbon = _observable(tables["carbon"], snapshot_lookup)
+    carbon = _ensure_numeric(carbon, ["INJ_AMOUNT_CARBON", "INJ_FLOW_CARBON"])
+    if len(carbon):
+        cg = carbon.groupby("HEATID")
+        carbon_agg = cg.agg(
+            carbon_events=("_TS", "size"),
+            carbon_amount_first=("INJ_AMOUNT_CARBON", "first"),
+            carbon_amount_last=("INJ_AMOUNT_CARBON", "last"),
+            carbon_flow_mean=("INJ_FLOW_CARBON", "mean"),
+            carbon_flow_max=("INJ_FLOW_CARBON", "max"),
+        )
+        carbon_agg["carbon_amount_delta"] = carbon_agg["carbon_amount_last"] - carbon_agg["carbon_amount_first"]
+        carbon_agg = carbon_agg.drop(columns=["carbon_amount_first"])
+        snapshots = _merge_features(snapshots, carbon_agg)
+        event_min_parts.append(carbon.groupby("HEATID")["_TS"].min())
 
-        carbon = _before(grouped_tables["carbon"], str(heatid), snapshot)
-        c_amount = _num(carbon, "INJ_AMOUNT_CARBON")
-        c_flow = _num(carbon, "INJ_FLOW_CARBON")
-        record.update({
-            "carbon_events": int(len(carbon)),
-            "carbon_amount_last": _last_valid(c_amount),
-            "carbon_amount_delta": _delta(c_amount),
-            "carbon_flow_mean": float(c_flow.mean(skipna=True)) if c_flow.notna().any() else np.nan,
-            "carbon_flow_max": float(c_flow.max(skipna=True)) if c_flow.notna().any() else np.nan,
-        })
-
-        for source, prefix in [("basket", "basket"), ("added", "added")]:
-            material = _before(grouped_tables[source], str(heatid), snapshot)
-            amount = _num(material, "CHARGE_AMOUNT")
-            record[f"{prefix}_events"] = int(len(material))
-            record[f"{prefix}_charge_total"] = float(amount.sum(skipna=True)) if len(amount) else 0.0
-            record[f"{prefix}_unique_materials"] = (
-                int(material["MAT_CODE"].nunique(dropna=True)) if "MAT_CODE" in material.columns else 0
+    for source, prefix in [("basket", "basket"), ("added", "added")]:
+        material = _observable(tables[source], snapshot_lookup)
+        material = _ensure_numeric(material, ["CHARGE_AMOUNT"])
+        if len(material):
+            mg = material.groupby("HEATID")
+            material_agg = mg.agg(
+                **{
+                    f"{prefix}_events": ("_TS", "size"),
+                    f"{prefix}_charge_total": ("CHARGE_AMOUNT", "sum"),
+                }
             )
+            if "MAT_CODE" in material.columns:
+                material_agg[f"{prefix}_unique_materials"] = mg["MAT_CODE"].nunique(dropna=True)
+            else:
+                material_agg[f"{prefix}_unique_materials"] = 0
+            snapshots = _merge_features(snapshots, material_agg)
+            event_min_parts.append(material.groupby("HEATID")["_TS"].min())
 
-        rows.append(record)
+    earliest = pd.concat(event_min_parts, axis=1).min(axis=1).rename("_EARLIEST")
+    snapshots = _merge_features(snapshots, earliest.to_frame())
+    snapshots["elapsed_to_snapshot_min"] = (
+        snapshots["snapshot_time"] - snapshots["_EARLIEST"]
+    ).dt.total_seconds() / 60.0
+    snapshots = snapshots.drop(columns=["_EARLIEST"])
 
-    result = pd.DataFrame(rows)
-    if result.empty:
-        return result
-    return result.sort_values(["target_time", "HEATID"]).reset_index(drop=True)
+    zero_fill = [
+        "transformer_segments", "transformer_mw_sum", "transformer_duration_sum",
+        "gas_events", "carbon_events", "basket_events", "basket_charge_total",
+        "basket_unique_materials", "added_events", "added_charge_total", "added_unique_materials",
+    ]
+    for col in zero_fill:
+        if col not in snapshots.columns:
+            snapshots[col] = 0.0
+        else:
+            snapshots[col] = snapshots[col].fillna(0.0)
+
+    return snapshots.sort_values(["target_time", "HEATID"]).reset_index(drop=True)
 
 
 def feature_columns(frame: pd.DataFrame) -> list[str]:
