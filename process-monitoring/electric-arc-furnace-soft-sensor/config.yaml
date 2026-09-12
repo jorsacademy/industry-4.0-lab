@@ -1,0 +1,17 @@
+seed: 42
+
+data:
+  raw_dir: data/raw
+
+evaluation:
+  fit_fraction: 0.55
+  selection_fraction: 0.15
+  calibration_fraction: 0.15
+  test_fraction: 0.15
+  interval_coverage: 0.90
+
+models:
+  ridge_alpha: 10.0
+  n_estimators: 400
+  min_samples_leaf: 2
+  max_features: 0.8
