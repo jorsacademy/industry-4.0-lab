@@ -60,6 +60,33 @@ The final future block is evaluated exactly once with PR-AUC, ROC-AUC, precision
 
 For every selected variable, the project compares historical versus final-test missing rate, median, interquartile range, and robust median shift in historical-IQR units. This is a drift diagnostic, not causal root-cause analysis.
 
+## Verified chronological benchmark
+
+The canonical UCI files were downloaded and validated in GitHub Actions before the benchmark ran. The validated source contains 1,567 rows, 590 raw process variables, 104 failures, and 41,951 missing measurement cells. The timestamps span 19 July 2008 through 17 October 2008.
+
+The train-only quality screen retained 444 eligible variables. Model/panel selection chose **Extra Trees with a 20-variable monitoring panel**. On the 310-row selection block, its average precision was **0.0785**; the failure prevalence in that block was **0.0355**.
+
+The untouched chronological test block contains **238 later production entities and 10 failures**. Its result was:
+
+| Metric | Future test |
+|---|---:|
+| Failure prevalence | 0.0420 |
+| Average precision / PR-AUC | 0.0830 |
+| ROC-AUC | 0.6184 |
+| Recall at frozen threshold | 0.9000 |
+| Precision at frozen threshold | 0.0413 |
+| F1 | 0.0789 |
+| MCC | -0.0121 |
+| Balanced accuracy | 0.4917 |
+| Brier score | 0.0476 |
+| TP / FP / FN / TN | 9 / 209 / 1 / 19 |
+
+The ranking metrics show some out-of-time signal: test PR-AUC is about twice the 4.2% failure prevalence and ROC-AUC is above random ranking. However, the **frozen calibration threshold fails the deployment gate**. It flags 218 of 238 test entities to catch 9 of 10 failures, producing 209 false positives and a negative MCC. High recall here is therefore not operationally useful on its own.
+
+This negative deployment result is retained rather than retuned away. The final chronological block has been consumed and is now **closed for model or threshold selection**. Any materially revised feature-selection method, model family, calibration rule, or threshold policy should be assessed on a new independent time period or external semiconductor process dataset rather than optimized against this test block.
+
+The result also illustrates why a small high-dimensional manufacturing dataset should not be evaluated only with shuffled cross-validation: the apparent monitoring policy can transfer poorly when prevalence and process distributions change over time. The committed drift report provides channel-level evidence of distribution change, while preserving the limitation that the anonymous variables cannot be mapped to physical root causes.
+
 ## Reproduce
 
 ```bash
@@ -91,8 +118,6 @@ artifacts/secom_yield_model.joblib
 
 `panel_model_comparison.csv` exposes the predictive-quality versus monitoring-panel-size trade-off rather than hiding feature count behind a single final model.
 
-## Portfolio standard
+## Next valid research step
 
-No benchmark number is claimed until the canonical data has actually been downloaded and the declared chronological experiment has run. The benchmark workflow stores real results after successful execution.
-
-A strong future extension would add cost information for individual measurement points, then replace the feature-count proxy with an explicit acquisition/monitoring-cost objective.
+A useful extension is to attach explicit acquisition/monitoring costs to measurement points and optimize predictive value against sensing burden. Because the current future-test period is closed, that extension needs a new independent evaluation period before any improvement claim is made.
