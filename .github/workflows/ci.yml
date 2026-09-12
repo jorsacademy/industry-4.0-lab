@@ -10,6 +10,7 @@ on:
       - "quality-monitoring/bosch-production-line/**"
       - "quality-monitoring/secom-semiconductor-yield/**"
       - "process-optimization/cnc-turning-quality-force/**"
+      - "process-monitoring/electric-arc-furnace-soft-sensor/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
@@ -19,6 +20,7 @@ on:
       - "quality-monitoring/bosch-production-line/**"
       - "quality-monitoring/secom-semiconductor-yield/**"
       - "process-optimization/cnc-turning-quality-force/**"
+      - "process-monitoring/electric-arc-furnace-soft-sensor/**"
       - ".github/workflows/ci.yml"
 
 permissions:
@@ -161,4 +163,27 @@ jobs:
             python scripts/validate_data.py
           else
             echo "CNC turning source data is downloaded transiently by the benchmark workflow."
+          fi
+
+  electric-arc-furnace-soft-sensor:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: process-monitoring/electric-arc-furnace-soft-sensor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: process-monitoring/electric-arc-furnace-soft-sensor/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - name: Validate source data when present
+        shell: bash
+        run: |
+          if [ -f data/raw/eaf_temp.csv ]; then
+            python scripts/validate_data.py
+          else
+            echo "EAF source data is downloaded transiently by the benchmark workflow."
           fi
