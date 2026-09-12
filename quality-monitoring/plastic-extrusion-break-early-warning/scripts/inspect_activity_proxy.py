@@ -81,7 +81,11 @@ def main() -> None:
         "zero_onsets_total": int(onset.sum()),
         "normal_gap_event_definition_seconds": 180,
     }
-    print(json.dumps(result, indent=2))
+    text = json.dumps(result, indent=2)
+    print(text)
+    reports = ROOT / "reports"
+    reports.mkdir(exist_ok=True)
+    (reports / "activity_proxy_summary.json").write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":
