@@ -27,3 +27,4 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python scripts/download_data.py
       - run: python scripts/validate_data.py
+      - run: python scripts/inspect_target.py
