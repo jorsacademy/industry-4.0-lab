@@ -81,7 +81,7 @@
   "future_test": {
     "threshold": 0.11609803544328405,
     "prevalence": 0.029543994861913937,
-    "average_precision": 0.16074827857000265,
+    "average_precision": 0.16074827857000268,
     "brier": 0.04137153651720075,
     "precision": 0.04057321460163944,
     "recall": 0.7871853546910755,
