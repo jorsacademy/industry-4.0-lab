@@ -1,0 +1,28 @@
+data:
+  raw_dir: data/raw
+  exp1_file: Exp1.csv
+  exp2_file: Exp2.csv
+  prep_file: Prep.csv
+
+validation:
+  exp1_rows: 324
+  exp1_runs: 54
+  exp2_rows: 288
+  exp2_runs: 48
+  expected_positions_per_run: 6
+  exp2_tool_wear_levels: [0.0, 0.1, 0.3]
+
+modeling:
+  random_state: 42
+  cv_splits: 5
+  candidates: [ridge, random_forest, extra_trees]
+  roughness_target: Ra_mean
+  force_target: F
+
+optimization:
+  throughput_name: mrr_proxy
+  pareto_by_tool_condition: true
+
+reports:
+  directory: reports
+  artifacts_directory: artifacts

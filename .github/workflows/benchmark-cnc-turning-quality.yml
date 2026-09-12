@@ -1,0 +1,63 @@
+name: benchmark-cnc-turning-quality-force
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "process-optimization/cnc-turning-quality-force/config.yaml"
+      - "process-optimization/cnc-turning-quality-force/requirements.txt"
+      - "process-optimization/cnc-turning-quality-force/src/**"
+      - "process-optimization/cnc-turning-quality-force/scripts/**"
+      - ".github/workflows/benchmark-cnc-turning-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: process-optimization/cnc-turning-quality-force
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: process-optimization/cnc-turning-quality-force/requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Download source dataset
+        run: python scripts/download_data.py
+      - name: Validate published experiment structure
+        run: python scripts/validate_data.py
+      - name: Run replicate-safe response benchmark
+        run: python -m src.train --config config.yaml
+      - name: Upload fitted surrogates
+        uses: actions/upload-artifact@v4
+        with:
+          name: cnc-turning-surrogates
+          path: process-optimization/cnc-turning-quality-force/artifacts/
+      - name: Commit derived benchmark reports
+        shell: bash
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f process-optimization/cnc-turning-quality-force/reports/model_comparison.csv
+          git add -f process-optimization/cnc-turning-quality-force/reports/metrics.json
+          git add -f process-optimization/cnc-turning-quality-force/reports/oof_predictions.csv
+          git add -f process-optimization/cnc-turning-quality-force/reports/pareto_candidates.csv
+          git add -f process-optimization/cnc-turning-quality-force/reports/run_level_summary.csv
+          git add -f process-optimization/cnc-turning-quality-force/reports/feature_importance.csv
+          if git diff --cached --quiet; then
+            echo "Benchmark reports unchanged."
+          else
+            git commit -m "Add CNC turning process benchmark results"
+            git pull --rebase origin main
+            git push origin main
+          fi
