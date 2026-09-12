@@ -41,8 +41,8 @@ The controller/program context includes:
 
 ## Data-quality rule
 
-Some controller states are known to be unreliable. The project flags rows where the current feed rate is 50, the X-axis actual position is 198, or the current program number is non-zero. By default these rows are removed before window construction; the behavior is configurable in `config.yaml`.
+Some controller values are known to represent unreliable acquisition states. The project flags the affected samples but preserves the 10 Hz time axis. By default, only the documented suspicious channel values are masked and interpolated locally before feature extraction; complete time samples are not discarded. This behavior is configurable in `config.yaml`.
 
 ## Integrity
 
-After the raw files are hydrated, `raw/manifest.json` contains a SHA-256 digest and byte size for every original data file. `scripts/validate_data.py` verifies the 18 experiment files, the run metadata, and the common high-dimensional telemetry schema.
+`raw/manifest.json` contains a SHA-256 digest and byte size for every original data file. `scripts/validate_data.py` verifies the 18 experiment files, the run metadata, and the common high-dimensional telemetry schema.
