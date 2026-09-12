@@ -1,0 +1,22 @@
+seed: 42
+source:
+  csv: data/raw/continuous_factory_process.csv
+forecast:
+  candidate_horizons_seconds: [5, 15, 30, 60]
+  sample_period_seconds: 1
+split:
+  fit_fraction: 0.55
+  selection_fraction: 0.15
+  calibration_fraction: 0.15
+  test_fraction: 0.15
+  purge_seconds: 120
+models:
+  ridge_alpha: 10.0
+  extra_trees_estimators: 180
+  extra_trees_min_samples_leaf: 4
+  extra_trees_max_features: 0.75
+uncertainty:
+  coverage: 0.90
+bootstrap:
+  block_length_rows: 120
+  repetitions: 500
