@@ -65,7 +65,7 @@ jobs:
       - name: Validate source data when present
         shell: bash
         run: |
-          if find data/raw -type f | grep -q .; then
+          if find data/raw -type f ! -name '.gitkeep' | grep -q .; then
             python scripts/validate_data.py
           else
             echo "AI4I 2021 source data is downloaded transiently by the benchmark workflow."
