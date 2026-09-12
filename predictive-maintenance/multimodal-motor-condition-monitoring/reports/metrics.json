@@ -1,0 +1,38 @@
+{
+  "source": {
+    "rows": 2000,
+    "conditions": 8,
+    "condition_counts": {
+      "c25": 250,
+      "c75": 250,
+      "cap": 250,
+      "off": 250,
+      "on": 250,
+      "out": 250,
+      "unb": 250,
+      "vnt": 250
+    },
+    "acceleration_features": 69,
+    "audio_features": 100,
+    "frequency_features": 169,
+    "source_file": "data/raw/Frequency Features/frequencyFeatures.csv",
+    "timestamp_column": "Timestamp"
+  },
+  "evaluation": {
+    "protocol": "same-session blocked cross-validation with a purge gap around each held-out time block",
+    "n_splits": 5,
+    "purge_windows": 4,
+    "window_overlap_fraction": 0.8,
+    "independent_session_generalization": false
+  },
+  "selected": {
+    "modality": "fusion",
+    "model": "logistic_regression",
+    "n_features": 169,
+    "macro_f1": 0.9320342853330317,
+    "macro_f1_std": 0.014034131896337947,
+    "balanced_accuracy": 0.9324999999999999,
+    "accuracy": 0.9324999999999999
+  },
+  "interpretation_note": "The source provides one short recording per operating condition. Blocked/purged evaluation avoids direct overlap leakage, but it remains a same-session benchmark and is not evidence of generalization to new machines, days, microphones, or sensor mountings."
+}
