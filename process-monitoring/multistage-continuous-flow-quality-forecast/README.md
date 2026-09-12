@@ -22,6 +22,8 @@ The Kaggle page describes the data as coming from an actual production line near
 
 The source page labels the data files as **© Original Authors** rather than providing a permissive data license. Raw source files are therefore **not redistributed** in this repository. `scripts/download_data.py` obtains the public source through KaggleHub and keeps it untracked. Only code and aggregate derived benchmark reports are committed.
 
+The verified source download contains **14,088 rows × 116 columns** and one 1 Hz production run.
+
 ## Leakage-safe forecasting contract
 
 ### 1. Forecast horizon selected before final test
@@ -58,7 +60,7 @@ After horizon alignment and the fixed validity rule, samples are divided in time
 - conformal calibration block;
 - untouched future test block.
 
-A purge interval is removed between blocks to reduce direct dependence across boundaries. No test row is used for horizon, model-family, feature, or uncertainty selection.
+A 120-second purge interval is removed around boundaries to reduce direct dependence across blocks. No test row is used for horizon, model-family, feature, or uncertainty selection.
 
 ## Models and metrics
 
@@ -80,6 +82,29 @@ The final report includes:
 - feature-distribution drift diagnostics between fit and final test blocks using KS statistics and robust median shift.
 
 No causal process-adjustment claim is made from feature importance.
+
+## Verified benchmark
+
+The historical selection block chose **Extra Trees at a 5-second horizon** using 100 process/upstream features. Its selection normalized MAE was `5.0484`. Importantly, the persistence baseline was already much stronger on that same selection block (`1.0364`). The selected learned model is therefore the best candidate process-only model in the pre-declared search, not an operational winner over persistence.
+
+The untouched future block contains **1,993 valid target rows** from 14:14:08 through 14:47:20. Performance deteriorated further:
+
+| Metric | Process-only Extra Trees | Current-output persistence | Current setpoint |
+|---|---:|---:|---:|
+| Mean target-normalized MAE | **8.1723** | **1.8310** | 11.1950 |
+| Mean raw MAE | 1.3824 | **0.4587** | 3.8700 |
+| Mean RMSE | 2.0208 | **1.4887** | 4.1617 |
+| Mean R² | -2.7467 | -0.3935 | -24.4575 |
+
+The learned process model beats the naive current-setpoint baseline but fails decisively against short-horizon persistence. The relative normalized-MAE change versus persistence is **-346%**, i.e. materially worse rather than better. A moving-block bootstrap of `persistence error − model error` gives a mean of `-6.3413` with a 95% interval of `[-7.5218, -4.4361]`, so the observed persistence advantage is not a marginal row-level fluctuation under the chosen block bootstrap.
+
+Uncertainty transfer also fails. The split-conformal procedure targets 90% marginal coverage but achieves only **75.18% mean coverage** across the 15 outputs on the future block. Coverage is highly heterogeneous by output channel, which is retained as a diagnostic rather than recalibrated on the test period.
+
+The drift report shows severe distribution change between the early fit block and final future block. Several process channels have a two-sample KS statistic of `1.0`, including Machine 1 exit-zone temperature, Machine 1 motor RPM, and one first-stage combiner temperature channel. These statistics establish distribution shift in the observed run; they are **not** causal explanations for the forecast failure.
+
+This negative result is the main technical finding: a process-only model that looks best among the declared learned candidates still does not beat a very strong five-second persistence baseline, and its calibrated uncertainty does not remain calibrated later in the same production run.
+
+The final future block has now been consumed and is **closed to further horizon, feature, model, calibration, or sensor selection**. Any redesigned forecasting method needs a new independent production run or another pre-registered benchmark before an improvement claim is valid.
 
 ## Reproduce
 
@@ -119,4 +144,4 @@ This dataset contains a single several-hour production run. A chronological futu
 
 The selected forecast horizon is a data-driven alignment for the observed run, not a verified material-residence-time estimate. True residence-time identification would require line speed, equipment geometry, or traceable material markers.
 
-The final future test is consumed once by the benchmark. Any later model redesign that uses its results requires a new independent production run for a valid improvement claim.
+The process variables and feature importances are observational. They are not a basis for production interventions without process-engineering validation. The failed future coverage also means the reported conformal intervals should not be treated as production guarantees under drift.
