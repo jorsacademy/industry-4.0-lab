@@ -20,6 +20,11 @@ venv/
 **/*.onnx
 **/*.joblib
 
+# Source-downloaded electrical-test dataset (license not independently verified)
+quality-monitoring/electrical-test-report/data/raw/*.csv
+quality-monitoring/electrical-test-report/data/raw/*.zip
+quality-monitoring/electrical-test-report/data/raw/manifest.json
+
 # Notebook checkpoints
 .ipynb_checkpoints/
 

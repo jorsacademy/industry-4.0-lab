@@ -1,0 +1,23 @@
+data:
+  path: data/raw/Electrical_Test_Report.csv
+  target_column: Result
+  group_column: LOT
+  time_column: Time
+  expected_measurements: 19
+  pass_code: 1
+
+validation:
+  expected_clean_rows: 80000
+  expected_lots: 866
+  expected_defects: 1068
+  min_stable_lot_size: 100
+
+model:
+  cv_splits: 5
+  random_state: 42
+  primary_metric: average_precision
+  target_recall: 0.90
+
+monitoring:
+  warning_defect_rate: 0.05
+  stable_lot_min_size: 100

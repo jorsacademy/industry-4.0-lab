@@ -5,10 +5,13 @@ on:
     branches: [main]
     paths:
       - "predictive-maintenance/cnc-tool-wear/**"
+      - "quality-monitoring/electrical-test-report/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "predictive-maintenance/cnc-tool-wear/**"
+      - "quality-monitoring/electrical-test-report/**"
+      - ".github/workflows/ci.yml"
 
 permissions:
   contents: read
@@ -34,5 +37,28 @@ jobs:
           if [ -f data/raw/experiment_18.csv ]; then
             python scripts/validate_data.py
           else
-            echo "Raw dataset hydration is still pending."
+            echo "Raw CNC dataset is not present in this checkout."
+          fi
+
+  electrical-test-report:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: quality-monitoring/electrical-test-report
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: quality-monitoring/electrical-test-report/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - name: Validate raw data when present
+        shell: bash
+        run: |
+          if [ -f data/raw/Electrical_Test_Report.csv ]; then
+            python scripts/validate_data.py
+          else
+            echo "Raw electrical-test dataset is source-downloaded and intentionally untracked."
           fi
