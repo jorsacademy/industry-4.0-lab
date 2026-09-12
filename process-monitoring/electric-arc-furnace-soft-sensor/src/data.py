@@ -8,8 +8,6 @@ import pandas as pd
 TABLE_SPECS = {
     "temperature": ("eaf_temp.csv", "DATETIME"),
     "transformer": ("eaf_transformer.csv", "STARTTIME"),
-    "gas": ("eaf_gaslance_mat.csv", "REVTIME"),
-    "carbon": ("inj_mat.csv", "REVTIME"),
     "basket": ("basket_charged.csv", "DATETIME"),
     "added": ("eaf_added_materials.csv", "DATETIME"),
 }
@@ -130,43 +128,6 @@ def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         snapshots = _merge_features(snapshots, tr)
         event_min_parts.append(transformer.groupby("HEATID")["_TS"].min())
 
-    gas = _observable(tables["gas"], snapshot_lookup)
-    gas = _ensure_numeric(gas, ["O2_AMOUNT", "GAS_AMOUNT", "O2_FLOW", "GAS_FLOW"])
-    if len(gas):
-        gg = gas.groupby("HEATID")
-        gas_agg = gg.agg(
-            gas_events=("_TS", "size"),
-            o2_amount_first=("O2_AMOUNT", "first"),
-            o2_amount_last=("O2_AMOUNT", "last"),
-            gas_amount_first=("GAS_AMOUNT", "first"),
-            gas_amount_last=("GAS_AMOUNT", "last"),
-            o2_flow_mean=("O2_FLOW", "mean"),
-            o2_flow_max=("O2_FLOW", "max"),
-            gas_flow_mean=("GAS_FLOW", "mean"),
-            gas_flow_max=("GAS_FLOW", "max"),
-        )
-        gas_agg["o2_amount_delta"] = gas_agg["o2_amount_last"] - gas_agg["o2_amount_first"]
-        gas_agg["gas_amount_delta"] = gas_agg["gas_amount_last"] - gas_agg["gas_amount_first"]
-        gas_agg = gas_agg.drop(columns=["o2_amount_first", "gas_amount_first"])
-        snapshots = _merge_features(snapshots, gas_agg)
-        event_min_parts.append(gas.groupby("HEATID")["_TS"].min())
-
-    carbon = _observable(tables["carbon"], snapshot_lookup)
-    carbon = _ensure_numeric(carbon, ["INJ_AMOUNT_CARBON", "INJ_FLOW_CARBON"])
-    if len(carbon):
-        cg = carbon.groupby("HEATID")
-        carbon_agg = cg.agg(
-            carbon_events=("_TS", "size"),
-            carbon_amount_first=("INJ_AMOUNT_CARBON", "first"),
-            carbon_amount_last=("INJ_AMOUNT_CARBON", "last"),
-            carbon_flow_mean=("INJ_FLOW_CARBON", "mean"),
-            carbon_flow_max=("INJ_FLOW_CARBON", "max"),
-        )
-        carbon_agg["carbon_amount_delta"] = carbon_agg["carbon_amount_last"] - carbon_agg["carbon_amount_first"]
-        carbon_agg = carbon_agg.drop(columns=["carbon_amount_first"])
-        snapshots = _merge_features(snapshots, carbon_agg)
-        event_min_parts.append(carbon.groupby("HEATID")["_TS"].min())
-
     for source, prefix in [("basket", "basket"), ("added", "added")]:
         material = _observable(tables[source], snapshot_lookup)
         material = _ensure_numeric(material, ["CHARGE_AMOUNT"])
@@ -194,8 +155,8 @@ def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
 
     zero_fill = [
         "transformer_segments", "transformer_mw_sum", "transformer_duration_sum",
-        "gas_events", "carbon_events", "basket_events", "basket_charge_total",
-        "basket_unique_materials", "added_events", "added_charge_total", "added_unique_materials",
+        "basket_events", "basket_charge_total", "basket_unique_materials",
+        "added_events", "added_charge_total", "added_unique_materials",
     ]
     for col in zero_fill:
         if col not in snapshots.columns:
