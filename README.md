@@ -12,6 +12,7 @@ A curated portfolio of applied Industry 4.0 projects built around cyber-physical
 | 04 | Semiconductor Process Monitoring | [SECOM Semiconductor Yield — Process Monitoring & Sensor-Panel Rationalization](quality-monitoring/secom-semiconductor-yield/) | 590 anonymous real process/sensor measurements with timestamped pass/fail yield | Rare-failure detection, compact monitoring-panel selection, and drift diagnostics | Ready |
 | 05 | Process Optimization | [CNC Turning — Surface Integrity, Cutting Forces & Process Trade-offs](process-optimization/cnc-turning-quality-force/) | Real turning DoE with dynamometer forces, roughness probes and flank-wear levels | Run-safe response modeling, sensor-value analysis, and Pareto process trade-offs | Ready |
 | 06 | Condition Monitoring | [Multimodal Motor Condition Monitoring — Acoustic + Vibration Diagnosis](predictive-maintenance/multimodal-motor-condition-monitoring/) | Measured 3-axis structure vibration + microphone frequency features across 8 rig conditions | Leakage-aware blocked diagnosis and sensor-modality ablation | Ready |
+| 07 | Metallurgical Process Monitoring | [Electric Arc Furnace — Terminal Temperature Soft Sensor](process-monitoring/electric-arc-furnace-soft-sensor/) | Heat-level EAF temperature/oxidation, transformer, gas/oxygen, carbon-injection and material-event logs | Leakage-safe terminal-temperature forecasting with chronological uncertainty calibration | Ready |
 
 ## Inclusion criteria
 
