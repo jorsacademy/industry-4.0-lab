@@ -1,0 +1,48 @@
+name: benchmark-cnc-tool-wear
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "predictive-maintenance/cnc-tool-wear/src/**"
+      - "predictive-maintenance/cnc-tool-wear/config.yaml"
+      - "predictive-maintenance/cnc-tool-wear/data/raw/**"
+      - "predictive-maintenance/cnc-tool-wear/requirements.txt"
+      - ".github/workflows/benchmark-cnc-tool-wear.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: predictive-maintenance/cnc-tool-wear
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: predictive-maintenance/cnc-tool-wear/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - run: python scripts/validate_data.py
+      - run: python -m src.train --config config.yaml
+      - name: Persist benchmark reports
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add predictive-maintenance/cnc-tool-wear/reports/cv_metrics.json
+          git add predictive-maintenance/cnc-tool-wear/reports/oof_run_predictions.csv
+          git add predictive-maintenance/cnc-tool-wear/reports/oof_window_predictions.csv
+          git add predictive-maintenance/cnc-tool-wear/reports/feature_importance.csv
+          if git diff --cached --quiet; then
+            echo "Benchmark reports are unchanged."
+          else
+            git commit -m "Update CNC tool wear benchmark reports"
+            git push
+          fi
