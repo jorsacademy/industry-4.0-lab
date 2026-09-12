@@ -1,0 +1,36 @@
+{
+  "source": {
+    "development_windows": 1608,
+    "evaluation_windows": 418,
+    "sample_rate_hz": 4096,
+    "window_seconds": 4.0,
+    "hop_seconds": 20.0,
+    "development_recordings": 5,
+    "evaluation_recordings": 5
+  },
+  "selection_contract": "model family and representation selected only from D using five blocked time folds; E opened once after selection",
+  "selected": {
+    "model": "compact_extra_trees",
+    "representation": "compact",
+    "n_features": 44,
+    "dev_cv_macro_f1": 0.9844770165356257,
+    "dev_cv_macro_f1_std": 0.018422092392483352,
+    "dev_cv_balanced_accuracy": 0.9845288461538461
+  },
+  "external_evaluation": {
+    "macro_f1": 0.4262835340584658,
+    "balanced_accuracy": 0.46210556511761325,
+    "accuracy": 0.46172248803827753,
+    "severity_mae": 0.777511961722488,
+    "multiclass_brier": 0.8603176205236486,
+    "log_loss": 2.0036903390002,
+    "ece": 0.39773799229924556
+  },
+  "rpm_range": {
+    "development_min": 629.1350749999999,
+    "development_max": 2354.8897500000003,
+    "evaluation_min": 1048.1998,
+    "evaluation_max": 1960.4961
+  },
+  "interpretation_note": "E is a separately acquired session from the same laboratory drive train. External-session performance is not cross-machine generalization."
+}
