@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Data and generated artifacts
+**/data/raw/
+**/data/processed/
+**/artifacts/
+**/outputs/
+**/*.pt
+**/*.pth
+**/*.onnx
+
+# Notebook checkpoints
+.ipynb_checkpoints/

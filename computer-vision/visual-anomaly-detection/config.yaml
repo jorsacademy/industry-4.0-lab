@@ -1,0 +1,24 @@
+seed: 42
+
+data:
+  train_normal: data/raw/train/normal
+  test_normal: data/raw/test/normal
+  test_anomaly: data/raw/test/anomaly
+
+model:
+  image_size: 128
+  latent_channels: 128
+
+training:
+  validation_ratio: 0.15
+  batch_size: 64
+  epochs: 40
+  learning_rate: 0.001
+  weight_decay: 0.00001
+  noise_std: 0.05
+  threshold_quantile: 0.995
+  num_workers: 0
+
+output:
+  directory: artifacts
+  checkpoint: anomaly_autoencoder.pt
