@@ -37,6 +37,10 @@ process-monitoring/electric-arc-furnace-soft-sensor/data/raw/*.csv
 process-monitoring/electric-arc-furnace-soft-sensor/data/raw/*.zip
 process-monitoring/electric-arc-furnace-soft-sensor/data/raw/manifest.json
 
+# Source-downloaded multi-stage continuous-flow manufacturing files
+process-monitoring/multistage-continuous-flow-quality-forecast/data/raw/*
+!process-monitoring/multistage-continuous-flow-quality-forecast/data/raw/.gitkeep
+
 # Source-downloaded Fraunhofer rotating-shaft archive
 predictive-maintenance/rotating-shaft-unbalance-generalization/data/raw/*
 !predictive-maintenance/rotating-shaft-unbalance-generalization/data/raw/.gitkeep
