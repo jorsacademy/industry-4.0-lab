@@ -1,0 +1,71 @@
+{
+  "source": {
+    "rows": 14088,
+    "columns": 116,
+    "sample_period_seconds": 1,
+    "stage2_targets": 15,
+    "production_runs": 1
+  },
+  "selection_contract": "forecast horizon and model family selected only on historical fit/selection blocks; calibration used only for conformal residuals; final future test opened once after selection",
+  "selected": {
+    "horizon_seconds": 5,
+    "model": "extra_trees",
+    "features": 100,
+    "selection_normalized_mae": 5.048355491245386
+  },
+  "splits": {
+    "fit": {
+      "rows": 7625,
+      "start": "2019-03-06T10:52:38",
+      "end": "2019-03-06T12:59:39"
+    },
+    "selection": {
+      "rows": 1873,
+      "start": "2019-03-06T13:03:40",
+      "end": "2019-03-06T13:34:52"
+    },
+    "calibration": {
+      "rows": 1872,
+      "start": "2019-03-06T13:38:54",
+      "end": "2019-03-06T14:10:07"
+    },
+    "test": {
+      "rows": 1993,
+      "start": "2019-03-06T14:14:08",
+      "end": "2019-03-06T14:47:20"
+    },
+    "purge_seconds": 120
+  },
+  "future_test": {
+    "normalized_mae": 8.17227433138678,
+    "mean_mae": 1.382442989905616,
+    "mean_rmse": 2.02078627083898,
+    "mean_r2": -2.746714641211874
+  },
+  "persistence_baseline": {
+    "normalized_mae": 1.8309901782633777,
+    "mean_mae": 0.4587446577932096,
+    "mean_rmse": 1.4887184278860315,
+    "mean_r2": -0.3935343561347431
+  },
+  "current_setpoint_baseline": {
+    "normalized_mae": 11.195005727334948,
+    "mean_mae": 3.8699837537995996,
+    "mean_rmse": 4.161722530455563,
+    "mean_r2": -24.45753958230005
+  },
+  "model_vs_persistence": {
+    "relative_nmae_improvement": -3.4633086667553075,
+    "block_bootstrap": {
+      "mean_improvement": -6.341284153123407,
+      "ci95_low": -7.521847336149478,
+      "ci95_high": -4.436148989776626
+    }
+  },
+  "conformal": {
+    "target_coverage": 0.9,
+    "mean_test_coverage": 0.7517979595250043,
+    "median_normalized_half_width": 1.9795714981899348
+  },
+  "interpretation_note": "Single-run chronological evaluation; the selected horizon is an empirical forecasting alignment, not verified material residence time. Final test is consumed and closed to further selection."
+}
