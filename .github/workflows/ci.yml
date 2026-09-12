@@ -13,6 +13,7 @@ on:
       - "process-optimization/cnc-turning-quality-force/**"
       - "process-monitoring/electric-arc-furnace-soft-sensor/**"
       - "process-monitoring/multistage-continuous-flow-quality-forecast/**"
+      - "process-monitoring/plastic-extrusion-interruption-early-warning/**"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
@@ -25,6 +26,7 @@ on:
       - "process-optimization/cnc-turning-quality-force/**"
       - "process-monitoring/electric-arc-furnace-soft-sensor/**"
       - "process-monitoring/multistage-continuous-flow-quality-forecast/**"
+      - "process-monitoring/plastic-extrusion-interruption-early-warning/**"
       - ".github/workflows/ci.yml"
 
 permissions:
@@ -236,4 +238,27 @@ jobs:
             python scripts/validate_data.py
           else
             echo "Continuous-flow source data is downloaded only by the dedicated benchmark workflow."
+          fi
+
+  plastic-extrusion-interruption-early-warning:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: process-monitoring/plastic-extrusion-interruption-early-warning
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: process-monitoring/plastic-extrusion-interruption-early-warning/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - name: Validate source data when present
+        shell: bash
+        run: |
+          if [ -f data/raw/extrusion.csv ]; then
+            python scripts/validate_data.py
+          else
+            echo "Plastic-extrusion source data is downloaded only by the dedicated benchmark workflow and is not redistributed."
           fi
