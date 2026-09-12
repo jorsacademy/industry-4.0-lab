@@ -1,0 +1,19 @@
+source:
+  expected_rows: 226536
+  min_columns: 450
+  max_columns: 500
+
+evaluation:
+  purge_rows: 500
+  fit_fraction: 0.55
+  selection_fraction: 0.15
+  calibration_fraction: 0.15
+  test_fraction: 0.15
+
+features:
+  max_missing_rate: 0.40
+  max_panel_size: 120
+
+model:
+  random_state: 42
+  min_calibration_recall: 0.70
