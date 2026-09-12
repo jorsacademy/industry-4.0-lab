@@ -1,0 +1,37 @@
+seed: 42
+
+data:
+  raw_dir: data/raw
+  metadata_file: train.csv
+  experiment_glob: experiment_*.csv
+  expected_experiments: 18
+  sample_period_seconds: 0.1
+  drop_known_artifact_rows: true
+
+features:
+  window_size: 50
+  step_size: 25
+  minimum_rows_per_window: 40
+  statistics:
+    - mean
+    - std
+    - median
+    - min
+    - max
+    - q25
+    - q75
+    - rms
+    - slope
+
+model:
+  target: tool_condition
+  positive_label: worn
+  maximum_cv_splits: 5
+  probability_threshold: 0.5
+  random_state: 42
+
+output:
+  artifact_dir: artifacts
+  report_dir: reports
+  model_file: tool_wear_model.joblib
+  metadata_file: model_metadata.json

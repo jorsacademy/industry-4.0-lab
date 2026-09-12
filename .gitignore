@@ -10,14 +10,20 @@ venv/
 .idea/
 .vscode/
 
-# Data and generated artifacts
-**/data/raw/
+# Generated artifacts
 **/data/processed/
-**/artifacts/
+**/artifacts/*
+!**/artifacts/.gitkeep
 **/outputs/
 **/*.pt
 **/*.pth
 **/*.onnx
+**/*.joblib
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Test / tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
