@@ -82,8 +82,14 @@ def normalize_experiment(frame: pd.DataFrame, experiment: str) -> pd.DataFrame:
     if "Position" not in out.columns:
         out["Position"] = np.arange(len(out), dtype=int)
 
+    # The published CSV uses non-numeric run identifiers. Keep them verbatim as
+    # physical experiment IDs instead of coercing them into artificial numbers.
+    out["Run"] = out["Run"].astype("string").str.strip()
+    if out["Run"].isna().any() or out["Run"].eq("").any():
+        raise ValueError(f"{experiment}: Run contains missing/blank identifiers")
+
     numeric = [
-        "Run", "ap", "vc", "f", "TCond", "Ra", "Rsk", "Rku", "RSm", "Rt",
+        "ap", "vc", "f", "TCond", "Ra", "Rsk", "Rku", "RSm", "Rt",
         "Fx", "Fy", "Fz", "F", "Position",
     ]
     for col in numeric:
@@ -94,9 +100,6 @@ def normalize_experiment(frame: pd.DataFrame, experiment: str) -> pd.DataFrame:
         components = [c for c in ["Fx", "Fy", "Fz"] if c in out.columns]
         if len(components) == 3:
             out["F"] = np.sqrt((out[components].astype(float) ** 2).sum(axis=1))
-
-    if out["Run"].isna().any():
-        raise ValueError(f"{experiment}: Run contains missing/non-numeric values after parsing")
     return out
 
 
@@ -117,10 +120,11 @@ def aggregate_runs(frame: pd.DataFrame) -> pd.DataFrame:
 
     rows: list[dict[str, object]] = []
     for (experiment, run), group in frame.groupby(["experiment", "Run"], sort=True, dropna=False):
+        run_id = str(run).strip()
         record: dict[str, object] = {
             "experiment": str(experiment),
-            "Run": int(run),
-            "run_key": f"{experiment}:{int(run)}",
+            "Run": run_id,
+            "run_key": f"{experiment}:{run_id}",
             "n_positions": int(len(group)),
             "n_unique_positions": int(group["Position"].nunique(dropna=True)) if "Position" in group else int(len(group)),
         }
