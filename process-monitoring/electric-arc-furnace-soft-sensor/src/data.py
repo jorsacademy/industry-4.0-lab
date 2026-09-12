@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -31,9 +30,9 @@ def to_numeric(series: pd.Series) -> pd.Series:
 
 def parse_timestamp(series: pd.Series) -> pd.Series:
     raw = series.astype(str).str.strip()
-    first = pd.to_datetime(raw, errors="coerce", utc=False)
+    first = pd.to_datetime(raw, errors="coerce", format="mixed", dayfirst=False)
     if first.notna().mean() < 0.8:
-        second = pd.to_datetime(raw, errors="coerce", dayfirst=True, utc=False)
+        second = pd.to_datetime(raw, errors="coerce", format="mixed", dayfirst=True)
         first = first.fillna(second)
     return first
 
@@ -61,11 +60,6 @@ def load_tables(raw_dir: str | Path) -> dict[str, pd.DataFrame]:
     return tables
 
 
-def _heat_before(frame: pd.DataFrame, heatid: str, snapshot: pd.Timestamp) -> pd.DataFrame:
-    subset = frame[(frame["HEATID"] == heatid) & frame["_TS"].notna() & (frame["_TS"] <= snapshot)].copy()
-    return subset.sort_values("_TS")
-
-
 def _num(frame: pd.DataFrame, column: str) -> pd.Series:
     if column not in frame.columns:
         return pd.Series(dtype=float)
@@ -84,24 +78,39 @@ def _delta(series: pd.Series) -> float:
     return float(valid.iloc[-1] - valid.iloc[0])
 
 
-def _event_min_time(tables: Iterable[pd.DataFrame], heatid: str, snapshot: pd.Timestamp) -> pd.Timestamp | pd.NaT:
+def _group_by_heat(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    ordered = frame[frame["_TS"].notna()].sort_values(["HEATID", "_TS"])
+    return {str(heatid): group for heatid, group in ordered.groupby("HEATID", sort=False)}
+
+
+def _before(grouped: dict[str, pd.DataFrame], heatid: str, snapshot: pd.Timestamp) -> pd.DataFrame:
+    group = grouped.get(str(heatid))
+    if group is None:
+        return pd.DataFrame()
+    return group[group["_TS"] <= snapshot]
+
+
+def _event_min_time(grouped_tables: dict[str, dict[str, pd.DataFrame]], heatid: str, snapshot: pd.Timestamp):
     times: list[pd.Timestamp] = []
-    for frame in tables:
-        subset = frame[(frame["HEATID"] == heatid) & frame["_TS"].notna() & (frame["_TS"] <= snapshot)]
+    for grouped in grouped_tables.values():
+        subset = _before(grouped, heatid, snapshot)
         if len(subset):
-            times.append(subset["_TS"].min())
+            times.append(subset["_TS"].iloc[0])
     return min(times) if times else pd.NaT
 
 
 def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    temp = tables["temperature"].copy()
+    prepared = {name: frame.copy() for name, frame in tables.items()}
+    temp = prepared["temperature"]
     temp["TEMP"] = to_numeric(temp["TEMP"])
     if "VALO2_PPM" in temp.columns:
         temp["VALO2_PPM"] = to_numeric(temp["VALO2_PPM"])
+    prepared["temperature"] = temp
+    grouped_tables = {name: _group_by_heat(frame) for name, frame in prepared.items()}
 
     rows: list[dict[str, object]] = []
-    for heatid, group in temp.groupby("HEATID", sort=False):
-        g = group[group["_TS"].notna() & group["TEMP"].notna()].sort_values("_TS")
+    for heatid, group in grouped_tables["temperature"].items():
+        g = group[group["TEMP"].notna()].sort_values("_TS")
         if len(g) < 2:
             continue
         target = g.iloc[-1]
@@ -127,12 +136,12 @@ def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
             "forecast_horizon_min": float((target_time - snapshot).total_seconds() / 60.0),
         }
 
-        earliest = _event_min_time(tables.values(), str(heatid), snapshot)
+        earliest = _event_min_time(grouped_tables, str(heatid), snapshot)
         record["elapsed_to_snapshot_min"] = (
             float((snapshot - earliest).total_seconds() / 60.0) if pd.notna(earliest) else np.nan
         )
 
-        transformer = _heat_before(tables["transformer"], str(heatid), snapshot)
+        transformer = _before(grouped_tables["transformer"], str(heatid), snapshot)
         mw = _num(transformer, "MW")
         duration = _num(transformer, "DURATION")
         tap = _num(transformer, "TAP")
@@ -145,7 +154,7 @@ def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
             "transformer_tap_last": _last_valid(tap),
         })
 
-        gas = _heat_before(tables["gas"], str(heatid), snapshot)
+        gas = _before(grouped_tables["gas"], str(heatid), snapshot)
         o2_amount = _num(gas, "O2_AMOUNT")
         gas_amount = _num(gas, "GAS_AMOUNT")
         o2_flow = _num(gas, "O2_FLOW")
@@ -162,7 +171,7 @@ def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
             "gas_flow_max": float(gas_flow.max(skipna=True)) if gas_flow.notna().any() else np.nan,
         })
 
-        carbon = _heat_before(tables["carbon"], str(heatid), snapshot)
+        carbon = _before(grouped_tables["carbon"], str(heatid), snapshot)
         c_amount = _num(carbon, "INJ_AMOUNT_CARBON")
         c_flow = _num(carbon, "INJ_FLOW_CARBON")
         record.update({
@@ -174,14 +183,13 @@ def build_snapshot_dataset(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
         })
 
         for source, prefix in [("basket", "basket"), ("added", "added")]:
-            material = _heat_before(tables[source], str(heatid), snapshot)
+            material = _before(grouped_tables[source], str(heatid), snapshot)
             amount = _num(material, "CHARGE_AMOUNT")
             record[f"{prefix}_events"] = int(len(material))
             record[f"{prefix}_charge_total"] = float(amount.sum(skipna=True)) if len(amount) else 0.0
-            if "MAT_CODE" in material.columns:
-                record[f"{prefix}_unique_materials"] = int(material["MAT_CODE"].nunique(dropna=True))
-            else:
-                record[f"{prefix}_unique_materials"] = 0
+            record[f"{prefix}_unique_materials"] = (
+                int(material["MAT_CODE"].nunique(dropna=True)) if "MAT_CODE" in material.columns else 0
+            )
 
         rows.append(record)
 
