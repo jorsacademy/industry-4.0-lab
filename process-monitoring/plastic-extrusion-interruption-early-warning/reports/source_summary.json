@@ -1,0 +1,13 @@
+{
+  "rows": 226536,
+  "columns": 470,
+  "timestamps": {
+    "start": "2018-06-25T04:40:00",
+    "end": "2019-06-25T06:44:00",
+    "duplicate_timestamps": 0
+  },
+  "continuous_segments": 23,
+  "active_rows": 193941,
+  "interruption_proxy_onsets": 640,
+  "explicit_fault_label_present": false
+}

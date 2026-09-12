@@ -1,0 +1,106 @@
+{
+  "source": {
+    "rows": 226536,
+    "columns": 470,
+    "timestamp_start": "2018-06-25T04:40:00",
+    "timestamp_end": "2019-06-25T06:44:00",
+    "continuous_segments": 23,
+    "active_rows_full_sequence": 193941,
+    "interruption_proxy_onsets_full_sequence": 640,
+    "explicit_fault_label_present": false
+  },
+  "target_contract": {
+    "name": "active_line_interruption_proxy_within_20_minutes",
+    "warning_horizon_minutes": 20.0,
+    "segment_gap_minutes": 5.0,
+    "onset_max_gap_minutes": 3.0,
+    "minimum_haul_speed": 10.0,
+    "note": "Proxy onset is active production transitioning to all four layer-thickness channels at zero; source has no authoritative stop-cause label."
+  },
+  "splits": {
+    "fit": {
+      "rows": 106773,
+      "positives": 2988,
+      "prevalence": 0.027984602849034867,
+      "start": "2018-06-25T04:40:00",
+      "end": "2019-01-12T10:00:00"
+    },
+    "selection": {
+      "rows": 28224,
+      "positives": 674,
+      "prevalence": 0.023880385487528345,
+      "start": "2019-01-12T11:01:00",
+      "end": "2019-03-10T00:55:00"
+    },
+    "calibration": {
+      "rows": 29280,
+      "positives": 805,
+      "prevalence": 0.027493169398907103,
+      "start": "2019-03-10T01:56:00",
+      "end": "2019-05-05T03:11:00"
+    },
+    "test": {
+      "rows": 29583,
+      "positives": 874,
+      "prevalence": 0.029543994861913937,
+      "start": "2019-05-05T04:12:00",
+      "end": "2019-06-25T06:44:00"
+    }
+  },
+  "purge_minutes": 30.0,
+  "feature_screen": {
+    "raw_numeric_predictors_after_direct_state_exclusion": 456,
+    "eligible_fit_only_predictors": 317
+  },
+  "selected": {
+    "model": "extra_trees",
+    "panel_size": 80,
+    "selection_average_precision": 0.16843533207467348,
+    "selection_roc_auc": 0.713346707093119,
+    "selection_brier": 0.040458118911649216,
+    "compact_tolerance_ap": 0.01
+  },
+  "calibration": {
+    "threshold_method": "max_precision_at_min_recall",
+    "threshold": 0.11609803544328405,
+    "prevalence": 0.027493169398907103,
+    "average_precision": 0.13295516510515504,
+    "brier": 0.037289713038220956,
+    "precision": 0.03812871822606814,
+    "recall": 0.7006211180124223,
+    "f1": 0.07232160030775149,
+    "mcc": 0.06572194414876921,
+    "balanced_accuracy": 0.6004773720000653,
+    "tn": 14247,
+    "fp": 14228,
+    "fn": 241,
+    "tp": 564,
+    "alarms_per_1000_rows": 505.19125683060105,
+    "roc_auc": 0.6669050872782598
+  },
+  "future_test": {
+    "threshold": 0.11609803544328405,
+    "prevalence": 0.029543994861913937,
+    "average_precision": 0.16074827857000265,
+    "brier": 0.04137153651720075,
+    "precision": 0.04057321460163944,
+    "recall": 0.7871853546910755,
+    "f1": 0.07716897537995626,
+    "mcc": 0.07548555831637192,
+    "balanced_accuracy": 0.6102494748654792,
+    "tn": 12440,
+    "fp": 16269,
+    "fn": 186,
+    "tp": 688,
+    "alarms_per_1000_rows": 573.2008247980259,
+    "roc_auc": 0.7085226624648997,
+    "eligible_events_with_full_warning_window": 104,
+    "events_warned": 96,
+    "event_recall": 0.9230769230769231,
+    "first_warning_lead_minutes_mean": 16.96875,
+    "first_warning_lead_minutes_median": 19.0,
+    "first_warning_lead_minutes_p25": 19.0,
+    "first_warning_lead_minutes_p75": 20.0
+  },
+  "interpretation_note": "Observational active-line interruption proxy, not an authoritative film-break/failure label. Final future test is consumed and closed to further selection."
+}
