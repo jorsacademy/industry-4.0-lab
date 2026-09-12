@@ -29,9 +29,9 @@ def to_numeric(series: pd.Series) -> pd.Series:
 
 def parse_timestamp(series: pd.Series) -> pd.Series:
     raw = series.astype(str).str.strip()
-    first = pd.to_datetime(raw, errors="coerce", format="mixed", dayfirst=False)
+    first = pd.to_datetime(raw, errors="coerce", dayfirst=False, cache=True)
     if first.notna().mean() < 0.8:
-        second = pd.to_datetime(raw, errors="coerce", format="mixed", dayfirst=True)
+        second = pd.to_datetime(raw, errors="coerce", dayfirst=True, cache=True)
         first = first.fillna(second)
     return first
 
