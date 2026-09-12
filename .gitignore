@@ -32,6 +32,11 @@ quality-monitoring/secom-semiconductor-yield/data/raw/secom.names
 quality-monitoring/secom-semiconductor-yield/data/raw/secom.zip
 quality-monitoring/secom-semiconductor-yield/data/raw/manifest.json
 
+# Source-downloaded electric-arc-furnace files
+process-monitoring/electric-arc-furnace-soft-sensor/data/raw/*.csv
+process-monitoring/electric-arc-furnace-soft-sensor/data/raw/*.zip
+process-monitoring/electric-arc-furnace-soft-sensor/data/raw/manifest.json
+
 # Notebook checkpoints
 .ipynb_checkpoints/
 
