@@ -41,6 +41,10 @@ process-monitoring/electric-arc-furnace-soft-sensor/data/raw/manifest.json
 process-monitoring/multistage-continuous-flow-quality-forecast/data/raw/*
 !process-monitoring/multistage-continuous-flow-quality-forecast/data/raw/.gitkeep
 
+# Source-downloaded plastic-extrusion files (CC BY-NC-ND 4.0; do not redistribute)
+process-monitoring/plastic-extrusion-interruption-early-warning/data/raw/*
+!process-monitoring/plastic-extrusion-interruption-early-warning/data/raw/.gitkeep
+
 # Source-downloaded Fraunhofer rotating-shaft archive
 predictive-maintenance/rotating-shaft-unbalance-generalization/data/raw/*
 !predictive-maintenance/rotating-shaft-unbalance-generalization/data/raw/.gitkeep
