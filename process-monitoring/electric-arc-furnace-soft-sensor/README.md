@@ -10,9 +10,9 @@ This framing creates a practical soft-sensor benchmark while making the predicti
 
 ## Why it adds something new
 
-The repository already contains machine-condition, smart-quality and machining-response projects. This project adds a different cyber-physical process: batch metallurgy with heterogeneous event logs, cumulative consumptions and heat-level traceability.
+The repository already contains machine-condition, smart-quality and machining-response projects. This project adds a different cyber-physical process: batch metallurgy with heterogeneous event logs and heat-level traceability.
 
-The source includes `HEATID` keys across process tables, timestamped transformer stages, gas/oxygen and carbon-injection streams, material additions, and repeated temperature/oxidation measurements. Those tables are joined only through event time and heat identity; future events are excluded from each prediction snapshot.
+The source includes `HEATID` keys across process tables, timestamped transformer stages, gas/oxygen and carbon-injection streams, material additions, and repeated temperature/oxidation measurements. The current v1 benchmark intentionally uses a compact snapshot-safe core of temperature/oxidation, transformer and charging tables. Higher-rate gas/oxygen and carbon streams remain a documented extension rather than being silently mixed into the first benchmark.
 
 ## Leakage-safe snapshot design
 
@@ -21,10 +21,10 @@ For every heat with at least two valid temperature measurements:
 1. the **target** is the final recorded EAF temperature;
 2. the **snapshot time** is the preceding temperature measurement;
 3. the latest measured temperature and oxidation available at the snapshot are retained;
-4. transformer, gas/oxygen, carbon and charge events are aggregated only when their timestamps are at or before the snapshot;
+4. transformer and material-charge events are aggregated only when their timestamps are at or before the snapshot;
 5. events after the snapshot are never used as features.
 
-This avoids a common industrial-data error: predicting an end-of-heat property with material or process events that happened after the nominal prediction point.
+This avoids a common industrial-data error: predicting an end-of-heat property with process events that happened after the nominal prediction point.
 
 ## Evaluation protocol
 
@@ -41,17 +41,15 @@ The selected model is evaluated with MAE, RMSE, R², bias, and the fraction of h
 
 ## Feature families
 
-The benchmark uses only information observable by the snapshot:
+The v1 benchmark uses only information observable by the snapshot:
 
 - penultimate measured temperature and latest available positive oxidation reading;
 - number of earlier temperature observations and forecast horizon;
 - elapsed process time inferred from the earliest timestamped event for the heat;
 - transformer segment count, stage, power-value summaries and duration summaries;
-- oxygen/gas cumulative deltas and flow summaries;
-- injected-carbon cumulative delta and flow summaries;
 - basket-charge and additional-charge totals/counts.
 
-The project intentionally avoids the final EAF chemical table as a predictor because its timing relative to the target can be ambiguous and would weaken the leakage guarantee.
+The project intentionally avoids the final EAF chemical table as a predictor because its timing relative to the target can be ambiguous and would weaken the leakage guarantee. The high-frequency gas/oxygen and injected-carbon streams are also excluded from v1 until they are integrated through a separately tested streaming aggregation path with the same snapshot cutoff.
 
 ## Reproduce
 
@@ -86,4 +84,4 @@ The raw Kaggle files are downloaded transiently and are not committed here. The 
 
 ## Interpretation boundary
 
-This is observational industrial process data. Feature importance is not a causal statement about furnace physics, and the model should not be used to recommend oxygen, carbon, transformer or charge interventions without process-engineering validation. The conformal interval is an empirical uncertainty estimate under the observed historical regime, not a safety guarantee under major regime change.
+This is observational industrial process data. Feature importance is not a causal statement about furnace physics, and the model should not be used to recommend transformer or charge interventions without process-engineering validation. The conformal interval is an empirical uncertainty estimate under the observed historical regime, not a safety guarantee under major regime change.
