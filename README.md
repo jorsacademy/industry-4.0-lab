@@ -9,6 +9,7 @@ A curated portfolio of applied Industry 4.0 projects built around cyber-physical
 | 01 | Predictive Maintenance | [CNC Tool Wear & Process Health Monitoring](predictive-maintenance/cnc-tool-wear/) | 10 Hz multi-axis CNC servo and spindle telemetry | Detect tool wear and support online condition monitoring | Ready |
 | 02 | Smart Quality | [Electrical Test Report — Smart Quality Monitoring](quality-monitoring/electrical-test-report/) | End-of-line electrical test measurements, lot/time traceability, `F1..F19` | Defect risk scoring, lot monitoring, and adaptive inspection | Ready |
 | 03 | Smart Quality | [Bosch Production Line — Early Defect Risk & Smart Quality](quality-monitoring/bosch-production-line/) | Station-tagged production measurements and measurement times across >1M parts | Rare-defect prediction with chronological validation and early-warning trade-offs | Ready |
+| 04 | Semiconductor Process Monitoring | [SECOM Semiconductor Yield — Process Monitoring & Sensor-Panel Rationalization](quality-monitoring/secom-semiconductor-yield/) | 590 anonymous real process/sensor measurements with timestamped pass/fail yield | Rare-failure detection, compact monitoring-panel selection, and drift diagnostics | Ready |
 
 ## Inclusion criteria
 

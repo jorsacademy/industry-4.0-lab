@@ -1,0 +1,24 @@
+data:
+  raw_dir: data/raw
+  data_file: secom.data
+  labels_file: secom_labels.data
+  expected_rows: 1567
+  expected_raw_features: 590
+  expected_failures: 104
+
+split:
+  fit_fraction: 0.50
+  selection_fraction: 0.20
+  calibration_fraction: 0.15
+  test_fraction: 0.15
+
+quality:
+  max_missing_rate: 0.50
+
+selection:
+  panel_sizes: [20, 40, 80, 160, "all"]
+  average_precision_tolerance: 0.02
+
+model:
+  random_state: 42
+  min_calibration_recall: 0.70
