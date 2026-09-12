@@ -1,0 +1,57 @@
+{
+  "source_snapshot_rows": 18303,
+  "numeric_features": 17,
+  "selected_model": "extra_trees",
+  "interval_target_coverage": 0.9,
+  "splits": {
+    "fit": {
+      "rows": 10066,
+      "start": "2015-01-01T01:32:00",
+      "end": "2016-08-22T04:10:00"
+    },
+    "selection": {
+      "rows": 2746,
+      "start": "2016-08-22T04:54:00",
+      "end": "2017-01-17T13:26:00"
+    },
+    "calibration": {
+      "rows": 2745,
+      "start": "2017-01-17T14:18:00",
+      "end": "2017-11-06T21:53:00"
+    },
+    "test": {
+      "rows": 2746,
+      "start": "2017-11-06T22:43:00",
+      "end": "2018-07-29T09:16:00"
+    }
+  },
+  "selection_metrics": {
+    "model": "extra_trees",
+    "mae": 6.724482987881366,
+    "rmse": 8.604655993946324,
+    "r2": 0.17803808755262962,
+    "bias": 3.0205165540208734,
+    "within_10c": 0.7749453750910416,
+    "within_20c": 0.9785142024763293
+  },
+  "future_test_metrics": {
+    "mae": 9.33200415322717,
+    "rmse": 12.279753959735249,
+    "r2": 0.09567871862806943,
+    "bias": -2.8858178578522984,
+    "within_10c": 0.6179898033503277,
+    "within_20c": 0.8969410050983249,
+    "interval_coverage": 0.8572469045884924,
+    "interval_radius_c": 17.79062500000032
+  },
+  "persistence_baseline_metrics": {
+    "mae": 22.12272396212673,
+    "rmse": 28.620421915462433,
+    "r2": -3.912419924395148,
+    "bias": -11.987254187909686,
+    "within_10c": 0.3310269482884195,
+    "within_20c": 0.5484340859431901
+  },
+  "mae_improvement_vs_persistence": 0.5781711072649458,
+  "interpretation_note": "Snapshot features use only EAF events timestamped at or before the penultimate temperature measurement; observational feature importance is not causal process guidance."
+}
