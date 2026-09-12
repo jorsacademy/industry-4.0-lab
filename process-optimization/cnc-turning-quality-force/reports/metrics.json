@@ -1,0 +1,54 @@
+{
+  "source_rows": 612,
+  "machining_runs": 102,
+  "exp1_runs": 54,
+  "exp2_runs": 48,
+  "unique_process_conditions": 47,
+  "validation_unit": "process-condition grouped cross-validation; replicate runs remain in the same fold",
+  "selected": {
+    "roughness_setpoint": {
+      "model": "random_forest",
+      "features": [
+        "ap",
+        "vc",
+        "f",
+        "TCond"
+      ],
+      "mae": 0.16141061910870552,
+      "rmse": 0.2181251442945006,
+      "r2": 0.4710603570502786
+    },
+    "roughness_force_assisted": {
+      "model": "random_forest",
+      "features": [
+        "ap",
+        "vc",
+        "f",
+        "TCond",
+        "Fx",
+        "Fy",
+        "Fz",
+        "F"
+      ],
+      "mae": 0.14881464538817205,
+      "rmse": 0.20587126773771966,
+      "r2": 0.5288207763233463
+    },
+    "force_setpoint": {
+      "model": "extra_trees",
+      "features": [
+        "ap",
+        "vc",
+        "f",
+        "TCond"
+      ],
+      "mae": 6.378237291290423,
+      "rmse": 9.514113963948471,
+      "r2": 0.9894173232165854
+    }
+  },
+  "force_assisted_roughness_mae_relative_improvement": 0.07803683419397854,
+  "pareto_candidates": 47,
+  "pareto_efficient_candidates": 33,
+  "interpretation_note": "Pareto candidates are restricted to experimentally observed recipes; they are decision-support candidates, not universal production optima."
+}

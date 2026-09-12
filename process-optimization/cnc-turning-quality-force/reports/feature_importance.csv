@@ -1,0 +1,17 @@
+task,feature,importance
+roughness_setpoint,f,0.7279316129352725
+roughness_setpoint,TCond,0.10259206869557465
+roughness_setpoint,ap,0.10163638661101919
+roughness_setpoint,vc,0.06783993175813359
+roughness_force_assisted,f,0.5178054199329831
+roughness_force_assisted,Fx,0.11797301257586741
+roughness_force_assisted,Fz,0.11441056080454318
+roughness_force_assisted,Fy,0.10578681867416519
+roughness_force_assisted,F,0.1054701070333962
+roughness_force_assisted,TCond,0.01957381643014451
+roughness_force_assisted,vc,0.014714761241329928
+roughness_force_assisted,ap,0.00426550330757051
+force_setpoint,ap,0.507194553040874
+force_setpoint,TCond,0.36455162105526157
+force_setpoint,f,0.1278658739715684
+force_setpoint,vc,0.00038795193229587303
