@@ -1,0 +1,73 @@
+{
+  "source_rows": 1567,
+  "raw_process_variables": 590,
+  "eligible_variables_fit_only": 444,
+  "selected_model": "extra_trees",
+  "selected_panel_size": 20,
+  "selection_average_precision": 0.07848412308828011,
+  "selection_tolerance": 0.02,
+  "operating_threshold": 0.06900888542544135,
+  "blocks": {
+    "fit": {
+      "rows": 785,
+      "failures": 67,
+      "failure_rate": 0.08535031847133757,
+      "start": "2008-07-19T11:55:00",
+      "end": "2008-09-11T08:58:00"
+    },
+    "selection": {
+      "rows": 310,
+      "failures": 11,
+      "failure_rate": 0.035483870967741936,
+      "start": "2008-09-11T09:24:00",
+      "end": "2008-09-26T01:21:00"
+    },
+    "calibration": {
+      "rows": 234,
+      "failures": 16,
+      "failure_rate": 0.06837606837606838,
+      "start": "2008-09-26T02:26:00",
+      "end": "2008-10-05T16:49:00"
+    },
+    "test": {
+      "rows": 238,
+      "failures": 10,
+      "failure_rate": 0.04201680672268908,
+      "start": "2008-10-05T18:46:00",
+      "end": "2008-10-17T06:07:00"
+    }
+  },
+  "calibration_metrics": {
+    "threshold": 0.06900888542544135,
+    "precision": 0.08552631578947369,
+    "recall": 0.8125,
+    "f1": 0.15476190476190477,
+    "mcc": 0.09251515413438469,
+    "balanced_accuracy": 0.5874426605504587,
+    "balanced_error_rate": 0.4125573394495413,
+    "tn": 79,
+    "fp": 139,
+    "fn": 3,
+    "tp": 13,
+    "average_precision": 0.09264472023293421,
+    "brier_score": 0.06704216570528222,
+    "roc_auc": 0.5799885321100917
+  },
+  "future_test_metrics": {
+    "threshold": 0.06900888542544135,
+    "precision": 0.04128440366972477,
+    "recall": 0.9,
+    "f1": 0.07894736842105263,
+    "mcc": -0.012052383118616852,
+    "balanced_accuracy": 0.4916666666666667,
+    "balanced_error_rate": 0.5083333333333333,
+    "tn": 19,
+    "fp": 209,
+    "fn": 1,
+    "tp": 9,
+    "average_precision": 0.0829857093173538,
+    "brier_score": 0.04756880529881107,
+    "roc_auc": 0.618421052631579
+  },
+  "interpretation_note": "Selected anonymous process variables are diagnostic priorities, not identified physical root causes."
+}
