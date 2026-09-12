@@ -31,7 +31,7 @@ def train(config_path: str | Path) -> dict[str, object]:
         raw_dir,
         metadata_file=data_cfg["metadata_file"],
         pattern=data_cfg["experiment_glob"],
-        drop_known_artifacts=bool(data_cfg["drop_known_artifact_rows"]),
+        mask_known_artifacts=bool(data_cfg["mask_known_artifact_values"]),
     )
 
     target = str(model_cfg["target"])
@@ -109,7 +109,7 @@ def train(config_path: str | Path) -> dict[str, object]:
         "minimum_rows_per_window": int(feature_cfg["minimum_rows_per_window"]),
         "statistics": list(feature_cfg["statistics"]),
         "sample_period_seconds": float(data_cfg["sample_period_seconds"]),
-        "drop_known_artifact_rows": bool(data_cfg["drop_known_artifact_rows"]),
+        "mask_known_artifact_values": bool(data_cfg["mask_known_artifact_values"]),
     }
     (artifact_dir / output_cfg["metadata_file"]).write_text(
         json.dumps(metadata_payload, indent=2, sort_keys=True), encoding="utf-8"
