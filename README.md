@@ -13,6 +13,7 @@ A curated portfolio of applied Industry 4.0 projects built around cyber-physical
 | 05 | Process Optimization | [CNC Turning — Surface Integrity, Cutting Forces & Process Trade-offs](process-optimization/cnc-turning-quality-force/) | Real turning DoE with dynamometer forces, roughness probes and flank-wear levels | Run-safe response modeling, sensor-value analysis, and Pareto process trade-offs | Ready |
 | 06 | Condition Monitoring | [Multimodal Motor Condition Monitoring — Acoustic + Vibration Diagnosis](predictive-maintenance/multimodal-motor-condition-monitoring/) | Measured 3-axis structure vibration + microphone frequency features across 8 rig conditions | Leakage-aware blocked diagnosis and sensor-modality ablation | Ready |
 | 07 | Metallurgical Process Monitoring | [Electric Arc Furnace — Terminal Temperature Soft Sensor](process-monitoring/electric-arc-furnace-soft-sensor/) | Heat-level EAF temperature/oxidation, transformer, gas/oxygen, carbon-injection and material-event logs | Leakage-safe terminal-temperature forecasting with chronological uncertainty calibration | Ready |
+| 08 | Rotating Machinery | [Rotating-Shaft Unbalance — Independent-Session Generalization](predictive-maintenance/rotating-shaft-unbalance-generalization/) | 4096 Hz three-sensor vibration with measured RPM across separate D/E sessions and five unbalance severities | Cross-session fault-severity diagnosis, order-domain modeling, calibration, and RPM-regime diagnostics | Ready |
 
 ## Inclusion criteria
 
@@ -32,7 +33,7 @@ Synthetic or purely illustrative computer-vision exercises without a meaningful 
 ## Repository principles
 
 - Preserve the raw industrial data structure when redistribution is practical and permitted.
-- Keep train/test boundaries aligned with physical experiments, machines, batches, lots, or time periods to avoid leakage.
+- Keep train/test boundaries aligned with physical experiments, machines, batches, lots, sessions, or time periods to avoid leakage.
 - Treat data quality, operating regimes, and process context as first-class parts of the model.
-- Report operational metrics at the physical asset/run/lot level, not only at the individual-row level.
+- Report operational metrics at the physical asset/run/lot/session level, not only at the individual-row level.
 - Include reproducible training, evaluation, inference/monitoring, and tests for every project.

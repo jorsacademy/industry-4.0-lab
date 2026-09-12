@@ -1,0 +1,30 @@
+source:
+  page: https://fordatis.fraunhofer.de/handle/fordatis/151.2?locale=en
+  archive_url: https://fordatis.fraunhofer.de/bitstream/fordatis/151.2/1/fraunhofer_eas_dataset_for_unbalance_detection_v1.zip
+  archive_name: fraunhofer_eas_dataset_for_unbalance_detection_v1.zip
+  license: CC BY 4.0
+  doi: 10.24406/fordatis/65.2
+signal:
+  sample_rate_hz: 4096
+  window_seconds: 4.0
+  hop_seconds: 20.0
+  skip_seconds: 20.0
+  chunk_rows: 262144
+  order_min: 0.5
+  order_max: 10.0
+  order_step: 0.25
+validation:
+  development_folds: 5
+  primary_metric: macro_f1
+  secondary_metric: balanced_accuracy
+modeling:
+  random_state: 42
+  n_jobs: -1
+  calibration_bins: 10
+rpm_bands:
+  - 0
+  - 1200
+  - 1450
+  - 1700
+  - 2000
+  - 10000

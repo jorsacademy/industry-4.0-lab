@@ -6,6 +6,7 @@ on:
     paths:
       - "predictive-maintenance/cnc-tool-wear/**"
       - "predictive-maintenance/multimodal-motor-condition-monitoring/**"
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/**"
       - "quality-monitoring/electrical-test-report/**"
       - "quality-monitoring/bosch-production-line/**"
       - "quality-monitoring/secom-semiconductor-yield/**"
@@ -16,6 +17,7 @@ on:
     paths:
       - "predictive-maintenance/cnc-tool-wear/**"
       - "predictive-maintenance/multimodal-motor-condition-monitoring/**"
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/**"
       - "quality-monitoring/electrical-test-report/**"
       - "quality-monitoring/bosch-production-line/**"
       - "quality-monitoring/secom-semiconductor-yield/**"
@@ -71,6 +73,29 @@ jobs:
             python scripts/validate_data.py
           else
             echo "AI4I 2021 source data is downloaded transiently by the benchmark workflow."
+          fi
+
+  rotating-shaft-unbalance-generalization:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: predictive-maintenance/rotating-shaft-unbalance-generalization
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: predictive-maintenance/rotating-shaft-unbalance-generalization/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - name: Validate source archive when present
+        shell: bash
+        run: |
+          if [ -f data/raw/fraunhofer_eas_dataset_for_unbalance_detection_v1.zip ]; then
+            python scripts/validate_data.py
+          else
+            echo "Fraunhofer rotating-shaft archive is downloaded only by the dedicated benchmark workflow."
           fi
 
   electrical-test-report:

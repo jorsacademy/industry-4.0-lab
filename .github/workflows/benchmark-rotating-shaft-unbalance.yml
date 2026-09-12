@@ -1,0 +1,85 @@
+name: benchmark-rotating-shaft-unbalance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "predictive-maintenance/rotating-shaft-unbalance-generalization/**"
+      - ".github/workflows/benchmark-rotating-shaft-unbalance.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rotating-shaft-unbalance-benchmark
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: predictive-maintenance/rotating-shaft-unbalance-generalization
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: predictive-maintenance/rotating-shaft-unbalance-generalization/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache canonical raw archive
+        uses: actions/cache@v4
+        with:
+          path: predictive-maintenance/rotating-shaft-unbalance-generalization/data/raw/fraunhofer_eas_dataset_for_unbalance_detection_v1.zip
+          key: fraunhofer-rotating-shaft-v1-ccby4
+
+      - name: Download canonical Fraunhofer data
+        run: python scripts/download_data.py
+
+      - name: Validate D/E source structure
+        run: python scripts/validate_data.py
+
+      - name: Run independent-session benchmark
+        run: python -m src.train --config config.yaml
+
+      - name: Upload fitted model and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: rotating-shaft-unbalance-benchmark
+          path: |
+            predictive-maintenance/rotating-shaft-unbalance-generalization/artifacts/unbalance_model.joblib
+            predictive-maintenance/rotating-shaft-unbalance-generalization/reports/*.csv
+            predictive-maintenance/rotating-shaft-unbalance-generalization/reports/*.json
+          if-no-files-found: error
+
+      - name: Commit derived benchmark reports
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/model_selection.csv \
+                  reports/metrics.json \
+                  reports/evaluation_predictions.csv \
+                  reports/confusion_matrix.csv \
+                  reports/class_report.csv \
+                  reports/rpm_band_performance.csv \
+                  reports/sensor_ablation.csv \
+                  reports/window_summary.csv \
+                  reports/feature_importance.csv
+          if git diff --cached --quiet; then
+            echo "No benchmark report changes."
+            exit 0
+          fi
+          git commit -m "Add verified rotating-shaft external-session benchmark"
+          git pull --rebase origin main
+          git push origin HEAD:main
