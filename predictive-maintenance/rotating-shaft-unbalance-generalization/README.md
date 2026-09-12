@@ -2,7 +2,7 @@
 
 A leakage-aware rotating-machinery condition-monitoring benchmark built on measured vibration from a variable-speed drive train. The source provides five unbalance severities and, critically, a separate **development (`D`) recording and evaluation (`E`) recording for every severity**.
 
-The project is designed around that separation. Model selection is performed only on the development recordings. The evaluation recordings remain closed until the model family and sensor configuration are frozen.
+The project is designed around that separation. Model family and representation are selected only on the development recordings. The evaluation recordings were opened once after selection for the verified benchmark below and are now closed to further model or sensor selection.
 
 ## Why this project is different
 
@@ -19,8 +19,8 @@ Canonical raw CSV release:
 - license: CC BY 4.0
 - sampling rate: 4096 Hz
 - channels: motor-controller input voltage, measured RPM, and three vibration sensors
-- development RPM range: approximately 630–2330 RPM
-- evaluation RPM range: approximately 1060–1900 RPM
+- development RPM range observed by this benchmark: approximately 629–2355 RPM
+- evaluation RPM range observed by this benchmark: approximately 1048–1960 RPM
 
 The ten source recordings are `0D..4D` and `0E..4E`. Severity 0 is the unbalance-free holder. Severities 1–4 use progressively stronger physical unbalances defined by attached mass/radius combinations.
 
@@ -30,14 +30,17 @@ Raw source files are not committed to this repository. The benchmark workflow do
 
 ### 1. Independent-session boundary
 
-- `D` recordings: feature engineering, model selection, hyperparameter/model-family comparison, sensor-ablation selection.
-- `E` recordings: final external evaluation only.
+- `D` recordings: feature engineering plus model-family and representation selection.
+- `E` recordings: one final external-session evaluation after selection is frozen.
+- RPM-band and sensor-ablation analyses on `E` are post-selection diagnostics only; they cannot be used to replace the selected model or claim an improved final result.
 
-No metric from `E` is used to choose the final model.
+The `E` session has now been consumed. Any revised feature set, model family, calibration rule, or sensor-selection policy requires a new independent session or a different pre-registered benchmark for a valid improvement claim.
 
 ### 2. Non-overlapping windows
 
 The raw signal is converted into 4-second windows with a 20-second hop. This deliberately avoids overlapping-window leakage and reduces serial dependence relative to dense sliding-window classification.
+
+The verified run contains **1,608 development windows** and **418 evaluation windows**.
 
 ### 3. Physics-informed compact features
 
@@ -67,19 +70,35 @@ Five blocked folds are constructed inside every `D` recording. Each fold holds o
 
 Selection uses macro-F1 first and balanced accuracy second.
 
-### 6. Final diagnostics
+## Verified benchmark
 
-After freezing the selected model, the `E` recordings are evaluated with:
+Development-only blocked validation selected **Extra Trees on the 44 compact physics-informed features**. Its development result was:
 
-- macro-F1, balanced accuracy and overall accuracy;
-- per-class precision/recall/F1;
-- severity mean absolute error on the ordinal 0–4 labels;
-- multiclass Brier score, log loss and expected calibration error;
-- confusion matrix;
-- performance by RPM band;
-- post-selection sensor-ablation diagnostics using the same frozen model family.
+| Metric | Development blocked CV |
+|---|---:|
+| Macro-F1 | **0.9845** |
+| Macro-F1 standard deviation | 0.0184 |
+| Balanced accuracy | 0.9845 |
 
-The RPM-band and sensor-ablation tables are diagnostics. They do not retroactively change the selected model.
+That result did **not** transfer to the independently acquired `E` recordings:
+
+| Metric | External `E` session |
+|---|---:|
+| Macro-F1 | **0.4263** |
+| Balanced accuracy | 0.4621 |
+| Accuracy | 0.4617 |
+| Ordinal severity MAE | 0.7775 |
+| Multiclass Brier score | 0.8603 |
+| Log loss | 2.0037 |
+| Expected calibration error | 0.3977 |
+
+The large `D`→`E` gap is the central result of the project. A model that appears almost solved under blocked validation inside the development recordings can fail badly when the acquisition session changes, even on the same laboratory drive train.
+
+The class-level failure is not uniform. Severity 4 transfers strongly (`F1 = 0.9880`), while severity 1 has `F1 = 0.0000`; severities 2 and 3 are also substantially weaker. This indicates that the external-session problem is concentrated in light and intermediate unbalance states rather than being a simple across-the-board loss of signal.
+
+RPM diagnostics also show weaker transfer in the upper evaluation-speed band: macro-F1 falls to **0.3340** for 1700–2000 RPM, versus 0.4996 below 1200 RPM. These are post-selection diagnostics, not alternative model-selection criteria.
+
+A single-sensor post-selection diagnostic found sensor 1 alone at macro-F1 `0.4749`, above the all-sensor result of `0.4263`. Because this comparison was made after opening `E`, the project deliberately does **not** switch the final model to sensor 1 or report that value as a new selected benchmark.
 
 ## Reproduce
 
@@ -112,11 +131,14 @@ reports/class_report.csv
 reports/rpm_band_performance.csv
 reports/sensor_ablation.csv
 reports/window_summary.csv
+reports/feature_importance.csv
 artifacts/unbalance_model.joblib
 ```
 
 ## Interpretation boundary
 
-The separate `D` and `E` recordings make this materially stronger than a random-window benchmark, but both sessions still come from the same laboratory drive train and sensor installation. External-session performance therefore supports repeatability across the published recording sessions; it is not evidence of transfer to a different machine, bearing, mounting, sensor model or industrial environment.
+The separate `D` and `E` recordings make this materially stronger than a random-window benchmark, but both sessions still come from the same laboratory drive train and sensor installation. External-session performance measures transfer across the two published acquisition sessions; it is not evidence of transfer to a different machine, bearing, mounting, sensor model or industrial environment.
+
+The poor external result is retained rather than tuned away. The scientifically valid next step is a newly acquired independent session or another pre-registered rotating-machinery dataset. Re-optimizing against the consumed `E` recordings would turn the external benchmark into another development set.
 
 Unbalance severity is an experimental condition, not a universal damage scale. The model is a diagnostic benchmark and should not be converted into maintenance thresholds without machine-specific validation.
