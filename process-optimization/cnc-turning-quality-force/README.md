@@ -56,6 +56,22 @@ A recipe is Pareto efficient when no other experimentally supported recipe simul
 
 Pareto fronts are reported by tool-wear regime so that a setting that is attractive with a new tool is not silently assumed to remain attractive near end of life.
 
+## Verified benchmark
+
+The public source files were downloaded and validated in GitHub Actions before model fitting. The benchmark contains **102 physical machining runs** (54 from `Exp1`, 48 from `Exp2`) spanning **47 distinct process-condition groups**. Replicates of the same condition remain together during grouped cross-validation.
+
+The selected run-level models are:
+
+| Task | Selected model | MAE | RMSE | R² |
+|---|---|---:|---:|---:|
+| Surface roughness from setpoints | Random Forest | 0.1614 | 0.2181 | 0.4711 |
+| Surface roughness + measured forces | Random Forest | 0.1488 | 0.2059 | 0.5288 |
+| Resultant cutting force from setpoints | Extra Trees | 6.3782 | 9.5141 | 0.9894 |
+
+Adding the measured force channels reduces grouped-CV roughness MAE by **7.8%** relative to the setpoint-only surrogate. That is useful evidence that the force sensor contains incremental process-quality information, but the roughness model remains only moderately predictive (`R² ≈ 0.53`) and should not be represented as production-grade metrology replacement.
+
+The cutting-force surrogate is much stronger under the controlled experimental design (`R² ≈ 0.989`). The decision layer evaluates **47 experimentally supported recipes**, of which **33 are Pareto efficient** under the three-way objective of lower roughness, lower cutting load and higher `ap × f × vc` throughput proxy. The broad frontier is retained rather than collapsed into a single unsupported "optimal" recipe.
+
 ## Reproduce
 
 ```bash
