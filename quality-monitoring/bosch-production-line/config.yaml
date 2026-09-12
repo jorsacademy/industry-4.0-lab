@@ -1,0 +1,35 @@
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  train_numeric: train_numeric.csv
+  train_date: train_date.csv
+  chunk_size: 5000
+  prefix_fraction: 1.0
+  expected_train_rows: 1183747
+
+features:
+  include_station_presence: true
+  include_station_time: true
+  include_station_numeric_mean: true
+  include_station_numeric_std: true
+  include_station_numeric_count: true
+  include_line_station_counts: true
+
+split:
+  train_fraction: 0.60
+  selection_fraction: 0.15
+  calibration_fraction: 0.10
+  test_fraction: 0.15
+
+modeling:
+  random_state: 42
+  candidates:
+    - logistic
+    - hist_gradient
+  operating_threshold:
+    strategy: min_precision
+    min_precision: 0.10
+
+reports:
+  directory: reports
+  artifacts_directory: artifacts
