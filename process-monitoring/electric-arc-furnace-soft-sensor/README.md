@@ -51,6 +51,26 @@ The v1 benchmark uses only information observable by the snapshot:
 
 The project intentionally avoids the final EAF chemical table as a predictor because its timing relative to the target can be ambiguous and would weaken the leakage guarantee. The high-frequency gas/oxygen and injected-carbon streams are also excluded from v1 until they are integrated through a separately tested streaming aggregation path with the same snapshot cutoff.
 
+## Verified chronological benchmark
+
+The benchmark workflow downloaded the public source and built **18,303** leakage-safe heat snapshots spanning January 2015 through July 2018. The median prediction horizon from the penultimate to final temperature measurement is **1 minute**. Seventeen numeric snapshot features are used.
+
+Model selection on the chronological selection block chose **Extra Trees** over Random Forest and Ridge. The untouched final block contains **2,746 later heats** (November 2017 through July 2018).
+
+| Metric | Extra Trees | Persistence baseline |
+|---|---:|---:|
+| MAE | 9.33 °C | 22.12 °C |
+| RMSE | 12.28 °C | 28.62 °C |
+| R² | 0.096 | -3.912 |
+| Within ±10 °C | 61.8% | 33.1% |
+| Within ±20 °C | 89.7% | 54.8% |
+
+The learned soft sensor reduces final-test MAE by **57.8%** relative to simply carrying the penultimate temperature forward. The modest final-test R² is retained rather than hidden: the model is useful as a short-horizon correction to persistence, but it does not explain most of the cross-heat temperature variance.
+
+The 90% split-conformal target produced a frozen interval radius of **17.79 °C** and achieved **85.7%** coverage on the future block. This under-coverage is reported explicitly; the interval should not be treated as a calibrated safety bound under the later regime.
+
+The final chronological block has now been consumed and is closed for model/threshold tuning. A materially changed feature set—particularly one adding high-rate oxygen/gas or carbon streams—needs a new independent evaluation period or external EAF dataset before an improvement claim is made.
+
 ## Reproduce
 
 ```bash
