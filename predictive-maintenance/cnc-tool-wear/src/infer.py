@@ -47,7 +47,7 @@ def score_experiment(experiment_path: str | Path, config_path: str | Path) -> di
 
     frame = clean_experiment(
         load_experiment(experiment_path),
-        drop_known_artifacts=bool(metadata["drop_known_artifact_rows"]),
+        mask_known_artifacts=bool(metadata["mask_known_artifact_values"]),
     )
     features = _feature_rows(
         frame,
