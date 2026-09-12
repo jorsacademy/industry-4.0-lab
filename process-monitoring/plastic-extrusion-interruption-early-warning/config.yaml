@@ -1,0 +1,29 @@
+source:
+  expected_rows: 226536
+  expected_columns: 470
+
+target:
+  warning_horizon_minutes: 20
+  segment_gap_minutes: 5
+  onset_max_gap_minutes: 3
+  minimum_haul_speed: 10
+
+evaluation:
+  fit_fraction: 0.55
+  selection_fraction: 0.15
+  calibration_fraction: 0.15
+  test_fraction: 0.15
+  purge_minutes: 30
+
+features:
+  max_missing_rate: 0.40
+  ranking_sample_rows: 60000
+  panel_sizes: [40, 80, 120]
+  compact_tolerance_ap: 0.01
+
+model:
+  random_state: 42
+  ranking_trees: 150
+  extra_trees: 240
+  min_samples_leaf: 5
+  min_calibration_recall: 0.70
