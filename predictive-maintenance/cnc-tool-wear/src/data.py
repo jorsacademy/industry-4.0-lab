@@ -60,17 +60,38 @@ def known_artifact_mask(frame: pd.DataFrame) -> pd.Series:
     return mask
 
 
-def clean_experiment(frame: pd.DataFrame, *, drop_known_artifacts: bool = True) -> pd.DataFrame:
+def mask_known_artifact_values(frame: pd.DataFrame) -> pd.DataFrame:
+    """Mask only documented unreliable channel values while preserving the time axis."""
+    masked = frame.copy()
+    artifact_mask = known_artifact_mask(masked)
+    masked["_known_artifact"] = artifact_mask.astype(int)
+
+    for column, value in KNOWN_ARTIFACT_COLUMNS.items():
+        if column in masked.columns:
+            numeric = pd.to_numeric(masked[column], errors="coerce")
+            masked.loc[numeric.eq(value), column] = np.nan
+
+    if "M1_CURRENT_PROGRAM_NUMBER" in masked.columns:
+        program = pd.to_numeric(masked["M1_CURRENT_PROGRAM_NUMBER"], errors="coerce")
+        masked.loc[program.notna() & program.ne(0), "M1_CURRENT_PROGRAM_NUMBER"] = np.nan
+    return masked
+
+
+def clean_experiment(frame: pd.DataFrame, *, mask_known_artifacts: bool = True) -> pd.DataFrame:
     cleaned = frame.copy()
-    numeric_columns = cleaned.select_dtypes(include=[np.number]).columns
+    numeric_columns = cleaned.select_dtypes(include=[np.number]).columns.tolist()
     cleaned[numeric_columns] = cleaned[numeric_columns].replace([np.inf, -np.inf], np.nan)
-    artifact_mask = known_artifact_mask(cleaned)
-    cleaned["_known_artifact"] = artifact_mask.astype(int)
-    if drop_known_artifacts:
-        cleaned = cleaned.loc[~artifact_mask].copy()
+
+    if mask_known_artifacts:
+        cleaned = mask_known_artifact_values(cleaned)
+    else:
+        cleaned["_known_artifact"] = known_artifact_mask(cleaned).astype(int)
+
     numeric_columns = [c for c in numeric_columns if c in cleaned.columns]
     if numeric_columns:
-        cleaned[numeric_columns] = cleaned[numeric_columns].interpolate(method="linear", limit_direction="both")
+        cleaned[numeric_columns] = cleaned[numeric_columns].interpolate(
+            method="linear", limit_direction="both"
+        )
     return cleaned.reset_index(drop=True)
 
 
@@ -88,18 +109,33 @@ def attach_metadata(experiment: pd.DataFrame, metadata: pd.DataFrame, experiment
     return result
 
 
-def load_all_experiments(raw_dir: str | Path, metadata_file: str = "train.csv", pattern: str = "experiment_*.csv", *, drop_known_artifacts: bool = True) -> tuple[pd.DataFrame, list[pd.DataFrame]]:
+def load_all_experiments(
+    raw_dir: str | Path,
+    metadata_file: str = "train.csv",
+    pattern: str = "experiment_*.csv",
+    *,
+    mask_known_artifacts: bool = True,
+) -> tuple[pd.DataFrame, list[pd.DataFrame]]:
     raw_dir = Path(raw_dir)
     metadata = load_metadata(raw_dir / metadata_file)
     experiments: list[pd.DataFrame] = []
     for path in discover_experiment_files(raw_dir, pattern):
         experiment_id = experiment_id_from_path(path)
-        frame = clean_experiment(load_experiment(path), drop_known_artifacts=drop_known_artifacts)
+        frame = clean_experiment(
+            load_experiment(path),
+            mask_known_artifacts=mask_known_artifacts,
+        )
         experiments.append(attach_metadata(frame, metadata, experiment_id))
     return metadata, experiments
 
 
-def validate_dataset(raw_dir: str | Path, *, metadata_file: str = "train.csv", pattern: str = "experiment_*.csv", expected_experiments: int = 18) -> dict[str, object]:
+def validate_dataset(
+    raw_dir: str | Path,
+    *,
+    metadata_file: str = "train.csv",
+    pattern: str = "experiment_*.csv",
+    expected_experiments: int = 18,
+) -> dict[str, object]:
     raw_dir = Path(raw_dir)
     metadata = load_metadata(raw_dir / metadata_file)
     files = discover_experiment_files(raw_dir, pattern)
