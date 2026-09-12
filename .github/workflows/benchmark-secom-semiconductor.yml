@@ -55,5 +55,7 @@ jobs:
             echo "Benchmark reports unchanged."
           else
             git commit -m "Add SECOM semiconductor yield benchmark results"
-            git push
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
           fi
