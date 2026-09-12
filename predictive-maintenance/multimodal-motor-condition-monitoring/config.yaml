@@ -1,0 +1,14 @@
+data:
+  raw_dir: data/raw
+
+evaluation:
+  n_splits: 5
+  purge_windows: 4
+  window_overlap_fraction: 0.80
+
+model:
+  random_state: 42
+
+output:
+  reports_dir: reports
+  artifacts_dir: artifacts
