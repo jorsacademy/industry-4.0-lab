@@ -1,0 +1,96 @@
+name: FJSP Final Frozen Baselines
+
+on:
+  pull_request:
+    paths:
+      - "configs/fjsp_final_baseline_test.json"
+      - "src/dmdtrl/fjsp_final.py"
+      - "tests/test_fjsp_final.py"
+      - ".github/workflows/fjsp-final.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  final-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install frozen benchmark dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,or]"
+
+      - name: Validate final benchmark contracts
+        run: pytest -q tests/test_fjsp_final.py
+
+      - name: Run one-time 100-seed frozen FJSP final benchmark
+        run: >-
+          python -m dmdtrl.fjsp_final
+          --config configs/fjsp_final_baseline_test.json
+          --environment-design configs/fjsp_hh_validation_design.json
+          --cpsat-freeze configs/fjsp_cpsat_validation_freeze.json
+          --rl-decision configs/fjsp_hh_validation_decision.json
+          --output-root final-results
+          --bootstrap 5000
+          --permutations 10000
+
+      - name: Verify final evidence boundary
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          with Path("final-results/fjsp_final_runs.csv").open(newline="", encoding="utf-8") as handle:
+              runs = list(csv.DictReader(handle))
+          with Path("final-results/fjsp_final_summary.csv").open(newline="", encoding="utf-8") as handle:
+              summary = list(csv.DictReader(handle))
+          with Path("final-results/fjsp_final_cpsat_comparisons.csv").open(newline="", encoding="utf-8") as handle:
+              comparisons = list(csv.DictReader(handle))
+          manifest = json.loads(Path("final-results/fjsp_final_manifest.json").read_text())
+
+          expected_policies = {
+              "EARLIEST_DUE_DATE",
+              "SHORTEST_PROCESSING",
+              "MINIMUM_SETUP",
+              "HIGHEST_PRIORITY",
+              "MINIMUM_SLACK",
+              "CRITICAL_RATIO",
+              "SAME_FAMILY_FIRST",
+              "WEIGHTED_TARDINESS_RISK",
+              "ROLLING_HORIZON_CPSAT",
+          }
+          assert len(runs) == 900
+          assert {int(row["seed"]) for row in runs} == set(range(42000, 42100))
+          assert {row["seed_regime"] for row in runs} == {"final"}
+          assert {row["policy"] for row in runs} == expected_policies
+          assert len(summary) == 9
+          assert len(comparisons) == 8
+          assert all(row["candidate"] == "ROLLING_HORIZON_CPSAT" for row in comparisons)
+          assert manifest["final_block_consumed"] is True
+          assert manifest["no_retuning_after_final"] is True
+          assert set(manifest["excluded_rl_controllers"]) == {"MASKABLE_PPO", "PPO_HYPER_HEURISTIC"}
+          PY
+
+      - name: Show final benchmark evidence
+        run: |
+          cat final-results/fjsp_final_summary.csv
+          cat final-results/fjsp_final_cpsat_comparisons.csv
+          cat final-results/fjsp_final_manifest.json
+
+      - name: Upload frozen FJSP final artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-final-frozen-baselines-${{ github.sha }}
+          path: final-results/
+          if-no-files-found: error
+          retention-days: 90

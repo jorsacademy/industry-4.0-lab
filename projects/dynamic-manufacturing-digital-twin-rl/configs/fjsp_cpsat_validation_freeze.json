@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "phase": 5,
+  "status": "validation_selected_frozen",
+  "controller": "FJSP_ROLLING_HORIZON_CP_SAT",
+  "source_pull_request": 18,
+  "source_workflow_run_id": 33249715726,
+  "source_branch_head_sha": "b4248639cbac07c7f5fc1585174edbff00b3faba",
+  "source_pull_request_merge_sha": "61dd72c0fb5214b65b9a1613274375b95fa7939d",
+  "validation_artifact": {
+    "artifact_id": 9714043376,
+    "artifact_name": "fjsp-or-validation-75b144fa1ddf04582374dc03b4f9d0f629be09e2",
+    "archive_sha256": "7db4fefb371fe1b435d4efbbef2bb8be497e4b51a4ce4e2ce9dab3c7d81fdd91"
+  },
+  "selection_grid": {
+    "job_horizons": [4, 8, 12],
+    "solver_budget_ms": [20.0, 50.0, 100.0],
+    "validation_seed_start": 41000,
+    "validation_seed_count": 30,
+    "validation_seed_end": 41029,
+    "quality_tolerance_pct": 2.0,
+    "max_fallback_rate_pct": 1.0
+  },
+  "selection_rule": "Restrict to WTT/latency Pareto-optimal configurations satisfying the maximum solver fallback rate. Among points within 2% WTT of the best reliable Pareto point, choose the minimum measured mean decision latency; break ties by WTT, fallback rate, solver budget, horizon, then policy name.",
+  "selected_policy": "FJSP_CPSAT_H4_B100MS",
+  "cpsat_config": {
+    "job_horizon": 4,
+    "solver_seconds": 0.1,
+    "time_scale": 100,
+    "random_seed": 0,
+    "num_search_workers": 1
+  },
+  "validation_metrics": {
+    "n_seeds": 30,
+    "weighted_tardiness_mean": 25.098253979720532,
+    "weighted_tardiness_std": 18.177178715766477,
+    "weighted_tardiness_ci_low": 18.861965207163937,
+    "weighted_tardiness_ci_high": 32.109763722405475,
+    "mean_decision_time_ms_mean": 25.096396085762674,
+    "mean_decision_time_ms_ci_low": 22.36635758093462,
+    "mean_decision_time_ms_ci_high": 27.92939443663942,
+    "solver_fallback_rate_mean": 0.0,
+    "solver_success_rate_mean": 1.0
+  },
+  "selection_data_boundary": {
+    "or_tuning_validation": "41000-41029",
+    "ppo_validation": "41100-41129",
+    "phase5_final": "42000+",
+    "final_test_used_for_selection": false
+  }
+}

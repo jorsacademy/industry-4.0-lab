@@ -1,0 +1,164 @@
+name: FJSP Hyper-Heuristic PPO Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/fjsp-hh-rl-smoke.yml"
+      - "src/dmdtrl/fjsp_hh_train.py"
+      - "src/dmdtrl/fjsp_hh_evaluate.py"
+      - "src/dmdtrl/fjsp_hyperheuristic_env.py"
+      - "src/dmdtrl/fjsp_operators.py"
+      - "src/dmdtrl/fjsp_env.py"
+      - "src/dmdtrl/fjsp_generator.py"
+      - "src/dmdtrl/fjsp_models.py"
+      - "src/dmdtrl/fjsp_simulator.py"
+      - "src/dmdtrl/fjsp_optimization.py"
+      - "tests/test_fjsp_hh_train.py"
+      - "tests/test_fjsp_hh_evaluate.py"
+      - "tests/test_fjsp_hyperheuristic.py"
+
+permissions:
+  contents: read
+
+jobs:
+  ppo-hyperheuristic-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Phase-5 RL and OR dependencies
+        run: >-
+          python -m pip install --upgrade pip &&
+          pip install -e ".[dev,or,rl]"
+
+      - name: Validate hyper-heuristic contracts
+        run: >-
+          pytest
+          tests/test_fjsp_hyperheuristic.py
+          tests/test_fjsp_hh_train.py
+          tests/test_fjsp_hh_evaluate.py
+          tests/test_fjsp_env.py
+          tests/test_fjsp_core.py
+
+      - name: Train real PPO hyper-heuristic smoke model
+        run: >-
+          python -m dmdtrl.fjsp_hh_train
+          --steps 4096
+          --seed 801
+          --n-steps 256
+          --batch-size 64
+          --jobs 6
+          --machines 3
+          --operations-min 2
+          --operations-max 3
+          --eligible-max 2
+          --setup-time 0.5
+          --output artifacts/fjsp_hh_ppo
+          --metadata artifacts/fjsp_hh_manifest.json
+          --device cpu
+          --quiet
+
+      - name: Evaluate PPO, eight operators, and CP-SAT on development seeds
+        run: >-
+          python -m dmdtrl.fjsp_hh_evaluate
+          --model artifacts/fjsp_hh_ppo.zip
+          --device cpu
+          --seeds 2
+          --seed-start 40050
+          --jobs 6
+          --machines 3
+          --operations-min 2
+          --operations-max 3
+          --eligible-max 2
+          --setup-time 0.5
+          --cpsat-horizon 4
+          --cpsat-seconds 0.10
+          --bootstrap 100
+          --permutations 100
+          --raw-output artifacts/fjsp_hh_dev_runs.csv
+          --summary-output artifacts/fjsp_hh_dev_summary.csv
+          --comparisons-output artifacts/fjsp_hh_dev_comparisons.csv
+
+      - name: Verify development-only common-random-number panel
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          root = Path("artifacts")
+          model = root / "fjsp_hh_ppo.zip"
+          manifest_path = root / "fjsp_hh_manifest.json"
+          runs_path = root / "fjsp_hh_dev_runs.csv"
+          summary_path = root / "fjsp_hh_dev_summary.csv"
+          comparisons_path = root / "fjsp_hh_dev_comparisons.csv"
+          assert model.stat().st_size > 0
+          manifest = json.loads(manifest_path.read_text())
+          assert manifest["algorithm"] == "PPO"
+          assert manifest["controller"] == "FJSP_HYPER_HEURISTIC"
+          assert manifest["training_seed"] == 801
+          assert manifest["training_config"]["total_timesteps"] == 4096
+          assert manifest["operator_contract"]["operator_action_count"] == 8
+          assert manifest["runtime"]["stable_baselines3"] != "not-installed"
+
+          with runs_path.open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          expected_operators = {
+              "EARLIEST_DUE_DATE",
+              "SHORTEST_PROCESSING",
+              "MINIMUM_SETUP",
+              "HIGHEST_PRIORITY",
+              "MINIMUM_SLACK",
+              "CRITICAL_RATIO",
+              "SAME_FAMILY_FIRST",
+              "WEIGHTED_TARDINESS_RISK",
+          }
+          expected_policies = expected_operators | {
+              "ROLLING_HORIZON_CPSAT",
+              "PPO_HYPER_HEURISTIC",
+          }
+          assert len(rows) == 20
+          assert {row["policy"] for row in rows} == expected_policies
+          assert {int(row["seed"]) for row in rows} == {40050, 40051}
+          assert max(int(row["seed"]) for row in rows) < 41000
+          assert {row["seed_regime"] for row in rows} == {"development"}
+          by_seed = defaultdict(list)
+          for row in rows:
+              by_seed[int(row["seed"])].append(row)
+          for seed_rows in by_seed.values():
+              assert len(seed_rows) == 10
+              assert len({row["instance_sha256"] for row in seed_rows}) == 1
+          ppo_rows = [row for row in rows if row["policy"] == "PPO_HYPER_HEURISTIC"]
+          assert all(float(row["unique_operator_fraction"]) > 0.0 for row in ppo_rows)
+          assert all(
+              float(row["mean_underlying_feasible_actions"]) >= 1.0
+              for row in ppo_rows
+          )
+          assert summary_path.stat().st_size > 0
+          assert comparisons_path.stat().st_size > 0
+          PY
+
+      - name: Show smoke artifacts
+        run: |
+          cat artifacts/fjsp_hh_manifest.json
+          cat artifacts/fjsp_hh_dev_summary.csv
+          cat artifacts/fjsp_hh_dev_comparisons.csv
+
+      - name: Upload FJSP hyper-heuristic PPO smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-hyperheuristic-ppo-smoke-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

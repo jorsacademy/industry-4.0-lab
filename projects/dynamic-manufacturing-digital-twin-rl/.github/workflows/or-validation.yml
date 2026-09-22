@@ -1,0 +1,83 @@
+name: OR Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/or-validation.yml"
+      - "src/dmdtrl/or_policy.py"
+      - "src/dmdtrl/or_experiments.py"
+      - "src/dmdtrl/or_selection.py"
+      - "src/dmdtrl/or_sensitivity.py"
+      - "tests/test_or_policy.py"
+      - "tests/test_or_selection.py"
+      - "tests/test_or_sensitivity.py"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  cpsat-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install OR validation dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[or,dev]"
+
+      - name: Validate OR selection tests
+        run: pytest tests/test_or_policy.py tests/test_or_selection.py tests/test_or_sensitivity.py
+
+      - name: Run CP-SAT validation sensitivity sweep
+        run: >-
+          dmdtrl-or-sensitivity
+          --seeds 30
+          --seed-start 10000
+          --horizon 4
+          --horizon 8
+          --horizon 12
+          --solver-seconds 0.02
+          --solver-seconds 0.05
+          --solver-seconds 0.10
+          --reference-horizon 12
+          --reference-solver-seconds 0.10
+          --bootstrap 2000
+          --permutations 5000
+          --raw-output results/cpsat_validation_runs.csv
+          --summary-output results/cpsat_validation_summary.csv
+          --comparisons-output results/cpsat_validation_comparisons.csv
+
+      - name: Select validation operating point
+        run: >-
+          dmdtrl-or-select
+          --raw-input results/cpsat_validation_runs.csv
+          --summary-input results/cpsat_validation_summary.csv
+          --output results/cpsat_operating_point.json
+          --quality-tolerance-pct 2.0
+          --max-fallback-rate-pct 1.0
+          --validation-seed-start 10000
+          --validation-seeds 30
+
+      - name: Show selected operating point
+        run: cat results/cpsat_operating_point.json
+
+      - name: Upload OR validation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpsat-validation-${{ github.sha }}
+          path: |
+            results/cpsat_validation_runs.csv
+            results/cpsat_validation_summary.csv
+            results/cpsat_validation_comparisons.csv
+            results/cpsat_operating_point.json
+          if-no-files-found: error
+          retention-days: 30

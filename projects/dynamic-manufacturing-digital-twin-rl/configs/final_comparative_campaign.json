@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "predeclared_final_test_design",
+  "primary_metric": "weighted_tardiness",
+  "primary_fixed_baseline": "WEIGHTED_COMPOSITE",
+  "ppo_training_seeds": [101, 202, 303, 404, 505],
+  "cpsat": {
+    "horizon": 8,
+    "solver_seconds": 0.1
+  },
+  "nominal": {
+    "seed_start": 20000,
+    "seed_count": 100
+  },
+  "stress": {
+    "seed_start": 30000,
+    "seed_count": 100,
+    "scenarios": [
+      "demand_120",
+      "demand_140",
+      "demand_160",
+      "breakdown_2x",
+      "breakdown_4x",
+      "tight_due_085",
+      "slow_machines_090",
+      "setup_2x",
+      "compound_stress"
+    ]
+  },
+  "bootstrap": 5000,
+  "permutations": 10000,
+  "primary_analysis": "For each environment seed, average the KPI across the five frozen PPO training-seed realizations, then perform paired inference across environment seeds. Use a hierarchical bootstrap over both training seeds and environment seeds for the primary weighted-tardiness confidence interval. Do not treat the 5 x N PPO observations as independent.",
+  "multiple_testing": "Apply Holm correction to the family of PPO-vs-CP-SAT and PPO-vs-WEIGHTED_COMPOSITE weighted-tardiness tests across all ten final scenarios.",
+  "no_tuning_rule": "No PPO hyperparameter, training seed, CP-SAT horizon/budget, fixed baseline, scenario definition, or final-test seed range may be changed after observing final-test outcomes."
+}

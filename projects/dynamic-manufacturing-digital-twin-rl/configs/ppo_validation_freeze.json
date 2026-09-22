@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "status": "validation_complete_representative_frozen",
+  "algorithm": "PPO",
+  "source_pull_request": 8,
+  "source_workflow_run_id": 33210409297,
+  "source_branch_head_sha": "feea16f17d5b2d8bcdf525a575478f4a8f6965a0",
+  "source_pull_request_merge_sha": "58a19174c2e712d5c78ec086292ff3cdb8c46d1a",
+  "merged_campaign_commit_sha": "4b16c289c6663819419cf9f81b424283e81996c4",
+  "aggregate_artifact": {
+    "artifact_id": 9701517564,
+    "artifact_name": "ppo-validation-campaign-58a19174c2e712d5c78ec086292ff3cdb8c46d1a",
+    "archive_sha256": "dc20c0bbc6b083e048edfb97e9a85e34a4308b885e6e614faa338089669e2d07"
+  },
+  "validation_seed_start": 10000,
+  "validation_seed_count": 30,
+  "final_test_seed_start": 20000,
+  "stress_test_seed_start": 30000,
+  "final_test_used_for_selection": false,
+  "training_design": {
+    "training_seeds": [101, 202, 303, 404, 505],
+    "total_timesteps_per_seed": 150000,
+    "total_training_timesteps": 750000,
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 128,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "ent_coef": 0.01,
+    "hidden_units": 128,
+    "device": "cpu"
+  },
+  "aggregate_validation": {
+    "n_training_seeds": 5,
+    "weighted_tardiness_training_mean": 78.11996755836329,
+    "weighted_tardiness_training_median": 77.06438017065987,
+    "weighted_tardiness_training_std": 5.002330437721321,
+    "weighted_tardiness_training_min": 72.99424177718763,
+    "weighted_tardiness_training_max": 83.46094127064045,
+    "mean_decision_time_ms_training_mean": 0.20200799088880217
+  },
+  "representative_model": {
+    "role": "deployment_and_demo_only",
+    "selection_rule": "Choose the training seed whose validation weighted-tardiness mean is closest to the median across all declared training seeds; break ties by lower decision latency, then seed.",
+    "training_seed": 101,
+    "validation_weighted_tardiness_mean": 77.06438017065987,
+    "validation_mean_decision_time_ms": 0.19219774611092555,
+    "model_sha256": "a3172d12c59a8585a2ded6ff8e1ae2bbf3287b5ca97d183cf06841e12d6980e3",
+    "training_manifest_sha256": "e5d89fe6becec6075edba2d49df3101fab5733ff066cd5457cc40195a6eede00"
+  },
+  "members": [
+    {
+      "training_seed": 101,
+      "validation_weighted_tardiness_mean": 77.06438017065987,
+      "validation_mean_decision_time_ms": 0.19219774611092555,
+      "model_sha256": "a3172d12c59a8585a2ded6ff8e1ae2bbf3287b5ca97d183cf06841e12d6980e3",
+      "training_manifest_sha256": "e5d89fe6becec6075edba2d49df3101fab5733ff066cd5457cc40195a6eede00",
+      "workflow_artifact_id": 9701431149,
+      "workflow_artifact_archive_sha256": "cf29a9bef956c8186d01f496bc79f53cd0e0143574da602342e024799aa47f41"
+    },
+    {
+      "training_seed": 202,
+      "validation_weighted_tardiness_mean": 83.46094127064045,
+      "validation_mean_decision_time_ms": 0.24685135277757636,
+      "model_sha256": "5a6c416919750ec7ebbb17b7279c5cb19d5be073fe590b12cfa5263fd6f177a6",
+      "training_manifest_sha256": "1fb8ad3d861746efc3374a17b47f2cb878b22de95efa61c2cabda35b56526115",
+      "workflow_artifact_id": 9701439037,
+      "workflow_artifact_archive_sha256": "fe9568e0406323440961169c5c577ca1a73a1fe423025db575436d1db2bf0a4b"
+    },
+    {
+      "training_seed": 303,
+      "validation_weighted_tardiness_mean": 73.85896092172514,
+      "validation_mean_decision_time_ms": 0.2763282372222717,
+      "model_sha256": "ae8a86c806ee6354c42c7553b62775473506963fcb43460ab4791fd0426c3986",
+      "training_manifest_sha256": "959b86e696f012090ff838978dc62a87ad8c659d7c8bbc3572f6400d30be13fa",
+      "workflow_artifact_id": 9701441553,
+      "workflow_artifact_archive_sha256": "36f8e732bb1a3f50bf3dfd521443355764d2a71bb62f4e585e88683073bb724a"
+    },
+    {
+      "training_seed": 404,
+      "validation_weighted_tardiness_mean": 72.99424177718763,
+      "validation_mean_decision_time_ms": 0.19106465055541672,
+      "model_sha256": "0c6eae596001c4e3656dbd2ab78c57e2a1ebc824b7409ce20f23167722a0e747",
+      "training_manifest_sha256": "b28fdea01a6b6dbf4645b5f3b39deb5375883f9a24a85dcf06fce427f0300b01",
+      "workflow_artifact_id": 9701433150,
+      "workflow_artifact_archive_sha256": "a4e5da714565d8b065a5f6efd8015e995048c652d5cee4e1801a49c8d750e313"
+    },
+    {
+      "training_seed": 505,
+      "validation_weighted_tardiness_mean": 83.22131365160332,
+      "validation_mean_decision_time_ms": 0.10359796777782054,
+      "model_sha256": "98d5897885e8af8b84a45b6aa73a8ce7464cc3434bd46cc1e92a0cca6e57e9c4",
+      "training_manifest_sha256": "90221c809415c0fe3005f7cd7c6aa404f77f39cdbbf30de9d1b192fdadac0afd",
+      "workflow_artifact_id": 9701415880,
+      "workflow_artifact_archive_sha256": "f884daa9ea76d1ac33a5f025dee0e750c7f83deb854cfe5e16ba7b16e093ace3"
+    }
+  ],
+  "scientific_claim_rule": "Final nominal and stress claims must retain all five declared PPO training-seed realizations. The representative seed-101 model must not replace multi-seed evidence or be presented as the best PPO model."
+}

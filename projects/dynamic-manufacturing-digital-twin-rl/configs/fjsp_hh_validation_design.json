@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "phase": 5,
+  "status": "predeclared_before_hyperheuristic_training",
+  "algorithm": "PPO",
+  "controller": "FJSP_HYPER_HEURISTIC",
+  "architecture": "operator_selection_v1",
+  "operator_names": [
+    "EARLIEST_DUE_DATE",
+    "SHORTEST_PROCESSING",
+    "MINIMUM_SETUP",
+    "HIGHEST_PRIORITY",
+    "MINIMUM_SLACK",
+    "CRITICAL_RATIO",
+    "SAME_FAMILY_FIRST",
+    "WEIGHTED_TARDINESS_RISK"
+  ],
+  "training_seeds": [901, 1901, 2901, 3901, 4901],
+  "training_config": {
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 128,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "ent_coef": 0.01,
+    "hidden_units": 128,
+    "device": "cpu"
+  },
+  "environment_config": {
+    "generator": {
+      "n_jobs": 12,
+      "n_machines": 5,
+      "n_families": 4,
+      "operations_min": 2,
+      "operations_max": 4,
+      "eligible_machines_min": 1,
+      "eligible_machines_max": 3,
+      "mean_interarrival": 1.0,
+      "processing_min": 2.0,
+      "processing_max": 10.0,
+      "due_date_factor_min": 1.5,
+      "due_date_factor_max": 2.5
+    },
+    "default_setup_time": 1.0,
+    "operation_bonus": 0.05,
+    "job_completion_bonus": 1.0,
+    "waiting_weight": 0.02,
+    "setup_weight": 0.05,
+    "tardiness_weight": 0.2
+  },
+  "development_seed_start": 40000,
+  "development_seed_end": 40999,
+  "or_tuning_seed_start": 41000,
+  "or_tuning_seed_end": 41029,
+  "direct_action_validation_seed_start": 41100,
+  "direct_action_validation_seed_end": 41129,
+  "validation_seed_start": 41200,
+  "validation_seed_count": 30,
+  "validation_seed_end": 41229,
+  "final_test_seed_start": 42000,
+  "final_test_seed_count": 100,
+  "final_test_seed_end": 42099,
+  "frozen_cpsat_config_path": "configs/fjsp_cpsat_validation_freeze.json",
+  "frozen_cpsat_policy": "FJSP_CPSAT_H4_B100MS",
+  "fixed_operator_baselines": [
+    "EARLIEST_DUE_DATE",
+    "SHORTEST_PROCESSING",
+    "MINIMUM_SETUP",
+    "HIGHEST_PRIORITY",
+    "MINIMUM_SLACK",
+    "CRITICAL_RATIO",
+    "SAME_FAMILY_FIRST",
+    "WEIGHTED_TARDINESS_RISK"
+  ],
+  "hyperparameter_selection": {
+    "search_performed_on_validation_block": false,
+    "development_smoke_used_for_parameter_selection": false,
+    "rationale": "Use the same 150000-step PPO budget and core hyperparameters as the rejected direct-action controller so the architecture change is evaluated without post-hoc tuning to the development smoke result."
+  },
+  "inference_unit": "training_seed",
+  "scientific_claim_rule": "Retain all five declared PPO training-seed realizations. Compute common-instance paired differences within each training seed and summarize algorithm robustness at the independent training-seed level. Never report the best training seed as the algorithm result.",
+  "representative_model_rule": "For demo/deployment continuity only, choose the completed training seed whose validation mean weighted tardiness is closest to the median across all five declared seeds; break ties by lower decision latency, then lower training seed.",
+  "selection_data_boundary": {
+    "development": "40000-40999",
+    "or_tuning": "41000-41029",
+    "rejected_direct_action_validation": "41100-41129",
+    "hyperheuristic_validation": "41200-41229",
+    "phase5_final_nominal": "42000-42099",
+    "final_test_used_for_selection": false
+  }
+}

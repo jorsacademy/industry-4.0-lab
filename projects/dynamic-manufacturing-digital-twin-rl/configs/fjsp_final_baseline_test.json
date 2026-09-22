@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "phase": 5,
+  "status": "predeclared_final_frozen_baseline_test",
+  "purpose": "project_completion_after_rl_validation_rejection",
+  "seed_start": 42000,
+  "seed_end": 42099,
+  "seed_count": 100,
+  "primary_metric": "weighted_tardiness",
+  "candidate": "ROLLING_HORIZON_CPSAT",
+  "policies": [
+    "EARLIEST_DUE_DATE",
+    "SHORTEST_PROCESSING",
+    "MINIMUM_SETUP",
+    "HIGHEST_PRIORITY",
+    "MINIMUM_SLACK",
+    "CRITICAL_RATIO",
+    "SAME_FAMILY_FIRST",
+    "WEIGHTED_TARDINESS_RISK",
+    "ROLLING_HORIZON_CPSAT"
+  ],
+  "environment_source": "configs/fjsp_hh_validation_design.json",
+  "cpsat_freeze_source": "configs/fjsp_cpsat_validation_freeze.json",
+  "rl_validation_decision_source": "configs/fjsp_hh_validation_decision.json",
+  "excluded_from_final": [
+    "MASKABLE_PPO",
+    "PPO_HYPER_HEURISTIC"
+  ],
+  "bootstrap": 5000,
+  "permutations": 10000,
+  "authorization": {
+    "scope": "frozen_non_rl_controllers_only",
+    "selection_complete_before_final_access": true,
+    "retuning_after_final_access": false,
+    "future_rl_selection_on_42000_42099": false
+  },
+  "interpretation_rule": "The final block is used once to estimate out-of-sample performance of the already-frozen eight dispatch rules and the already-frozen FJSP CP-SAT operating point. RL controllers rejected during validation are not promoted into this final benchmark, and final outcomes must not be used to retune any controller."
+}

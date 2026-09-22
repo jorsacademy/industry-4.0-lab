@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "predeclared_validation_design",
+  "algorithm": "PPO",
+  "training_seeds": [101, 202, 303, 404, 505],
+  "training_config": {
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 128,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "ent_coef": 0.01,
+    "hidden_units": 128,
+    "device": "cpu",
+    "verbose": 0
+  },
+  "validation_seed_start": 10000,
+  "validation_seed_count": 30,
+  "bootstrap": 2000,
+  "permutations": 5000,
+  "final_test_seed_start": 20000,
+  "stress_test_seed_start": 30000,
+  "representative_model_rule": "Choose the completed training seed whose validation weighted-tardiness mean is closest to the median across training seeds; break ties by lower decision latency, then seed.",
+  "scientific_claim_rule": "Final performance claims aggregate all five declared training seeds. The representative model is not a best-seed cherry-pick and is used only for deployment/demo continuity."
+}

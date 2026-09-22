@@ -1,0 +1,286 @@
+name: FJSP HH PPO Validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/fjsp-hh-ppo-validation.yml"
+      - "configs/fjsp_hh_validation_design.json"
+      - "configs/fjsp_cpsat_validation_freeze.json"
+      - "src/dmdtrl/fjsp_hh_campaign.py"
+      - "src/dmdtrl/fjsp_hh_member.py"
+      - "src/dmdtrl/fjsp_hh_protocol.py"
+      - "src/dmdtrl/fjsp_hh_train.py"
+      - "src/dmdtrl/fjsp_hh_evaluate.py"
+      - "src/dmdtrl/fjsp_hyperheuristic_env.py"
+      - "src/dmdtrl/fjsp_operators.py"
+      - "src/dmdtrl/fjsp_env.py"
+      - "src/dmdtrl/fjsp_generator.py"
+      - "src/dmdtrl/fjsp_simulator.py"
+      - "src/dmdtrl/fjsp_optimization.py"
+      - "tests/test_fjsp_hh_campaign.py"
+      - "tests/test_fjsp_hh_protocol.py"
+      - "tests/test_fjsp_hh_train.py"
+      - "tests/test_fjsp_hyperheuristic.py"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build predeclared training-seed matrix
+        id: matrix
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          design = json.loads(Path("configs/fjsp_hh_validation_design.json").read_text())
+          freeze = json.loads(Path("configs/fjsp_cpsat_validation_freeze.json").read_text())
+          assert design["status"] == "predeclared_before_hyperheuristic_training"
+          assert design["algorithm"] == "PPO"
+          assert design["controller"] == "FJSP_HYPER_HEURISTIC"
+          assert design["training_seeds"] == [901, 1901, 2901, 3901, 4901]
+          assert design["training_config"]["total_timesteps"] == 150000
+          assert design["validation_seed_start"] == 41200
+          assert design["validation_seed_end"] == 41229
+          assert design["final_test_seed_start"] == 42000
+          assert freeze["selected_policy"] == design["frozen_cpsat_policy"]
+          matrix = {"training_seed": design["training_seeds"]}
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
+          PY
+
+  baseline-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install OR dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,or]"
+
+      - name: Validate hyper-heuristic campaign contracts
+        run: >-
+          pytest
+          tests/test_fjsp_hh_campaign.py
+          tests/test_fjsp_hh_protocol.py
+          tests/test_fjsp_hyperheuristic.py
+          tests/test_fjsp_optimization.py
+
+      - name: Evaluate eight frozen operators and frozen CP-SAT once
+        run: >-
+          python -m dmdtrl.fjsp_hh_campaign baseline
+          --config configs/fjsp_hh_validation_design.json
+          --cpsat-freeze configs/fjsp_cpsat_validation_freeze.json
+          --output-root baseline
+          --bootstrap 2000
+
+      - name: Verify baseline completeness and final-test embargo
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          design = json.loads(Path("configs/fjsp_hh_validation_design.json").read_text())
+          with Path("baseline/baseline_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          expected_seeds = set(range(41200, 41230))
+          expected_policies = set(design["fixed_operator_baselines"]) | {"ROLLING_HORIZON_CPSAT"}
+          assert len(rows) == 30 * 9
+          assert {row["policy"] for row in rows} == expected_policies
+          by_policy = defaultdict(set)
+          fingerprints = defaultdict(set)
+          for row in rows:
+              seed = int(row["seed"])
+              assert row["seed_regime"] == "validation"
+              assert seed < design["final_test_seed_start"]
+              by_policy[row["policy"]].add(seed)
+              fingerprints[seed].add(row["instance_sha256"])
+          assert all(seeds == expected_seeds for seeds in by_policy.values())
+          assert all(len(values) == 1 for values in fingerprints.values())
+          PY
+
+      - name: Upload frozen hyper-heuristic baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-hh-baseline-${{ github.sha }}
+          path: baseline/
+          if-no-files-found: error
+          retention-days: 90
+
+  train-validate:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install PPO dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,rl]"
+
+      - name: Validate PPO hyper-heuristic contracts
+        run: >-
+          pytest
+          tests/test_fjsp_hh_campaign.py
+          tests/test_fjsp_hh_protocol.py
+          tests/test_fjsp_hh_train.py
+          tests/test_fjsp_hyperheuristic.py
+
+      - name: Train and validate predeclared PPO member
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: >-
+          python -m dmdtrl.fjsp_hh_member
+          --config configs/fjsp_hh_validation_design.json
+          --training-seed "$TRAINING_SEED"
+          --output-root "artifacts/seed_${TRAINING_SEED}"
+          --bootstrap 2000
+
+      - name: Verify member provenance and validation boundary
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import os
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/fjsp_hh_validation_design.json").read_text())
+          root = Path("artifacts") / f"seed_{seed}"
+          with (root / "ppo_validation_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          observed = [int(row["seed"]) for row in rows]
+          assert observed == list(range(41200, 41230))
+          assert all(row["policy"] == "PPO_HYPER_HEURISTIC" for row in rows)
+          assert all(int(row["training_seed"]) == seed for row in rows)
+          assert all(row["seed_regime"] == "validation" for row in rows)
+          assert max(observed) < design["final_test_seed_start"]
+          manifest = json.loads((root / "training_manifest.json").read_text())
+          assert manifest["algorithm"] == "PPO"
+          assert manifest["controller"] == "FJSP_HYPER_HEURISTIC"
+          assert manifest["training_seed"] == seed
+          assert manifest["training_config"]["total_timesteps"] == 150000
+          assert manifest["environment_config"] == design["environment_config"]
+          assert manifest["runtime"]["stable_baselines3"] != "not-installed"
+          assert (root / "fjsp_hyperheuristic_ppo.zip").stat().st_size > 0
+          PY
+
+      - name: Upload PPO hyper-heuristic member artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-hh-member-seed-${{ matrix.training_seed }}-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: [plan, baseline-validation, train-validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install aggregation dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+
+      - name: Download frozen baseline panel
+        uses: actions/download-artifact@v4
+        with:
+          name: fjsp-hh-baseline-${{ github.sha }}
+          path: baseline
+
+      - name: Download all PPO hyper-heuristic members
+        uses: actions/download-artifact@v4
+        with:
+          pattern: fjsp-hh-member-seed-*-${{ github.sha }}
+          path: members
+          merge-multiple: true
+
+      - name: Aggregate training-seed-level validation evidence
+        run: >-
+          python -m dmdtrl.fjsp_hh_campaign aggregate
+          --config configs/fjsp_hh_validation_design.json
+          --cpsat-freeze configs/fjsp_cpsat_validation_freeze.json
+          --baseline-root baseline
+          --members-root members
+          --output-root campaign
+          --bootstrap 5000
+          --permutations 10000
+
+      - name: Verify complete campaign and final-test embargo
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          design = json.loads(Path("configs/fjsp_hh_validation_design.json").read_text())
+          manifest = json.loads(Path("campaign/fjsp_hh_validation_manifest.json").read_text())
+          with Path("campaign/fjsp_hh_training_seed_summary.csv").open(newline="", encoding="utf-8") as handle:
+              members = list(csv.DictReader(handle))
+          with Path("campaign/fjsp_hh_training_seed_comparisons.csv").open(newline="", encoding="utf-8") as handle:
+              comparisons = list(csv.DictReader(handle))
+          assert {int(row["training_seed"]) for row in members} == set(design["training_seeds"])
+          assert len(members) == 5
+          assert len(comparisons) == 9
+          assert all(int(row["n_training_seeds"]) == 5 for row in comparisons)
+          assert all(row["inference_unit"] == "training_seed" for row in comparisons)
+          assert manifest["final_test_used_for_selection"] is False
+          assert manifest["representative_training_seed"] in design["training_seeds"]
+          assert manifest["representative_model_role"] == "deployment_and_demo_only"
+          assert manifest["frozen_cpsat"]["selected_policy"] == "FJSP_CPSAT_H4_B100MS"
+          PY
+
+      - name: Show validation evidence
+        run: |
+          cat campaign/fjsp_hh_training_seed_summary.csv
+          cat campaign/fjsp_hh_training_seed_comparisons.csv
+          cat campaign/fjsp_hh_validation_manifest.json
+
+      - name: Upload FJSP hyper-heuristic validation campaign artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-hh-validation-campaign-${{ github.sha }}
+          path: campaign/
+          if-no-files-found: error
+          retention-days: 90

@@ -1,0 +1,150 @@
+name: FJSP RL Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/fjsp-rl-smoke.yml"
+      - "src/dmdtrl/fjsp_train.py"
+      - "src/dmdtrl/fjsp_evaluate.py"
+      - "src/dmdtrl/fjsp_env.py"
+      - "src/dmdtrl/fjsp_generator.py"
+      - "src/dmdtrl/fjsp_models.py"
+      - "src/dmdtrl/fjsp_simulator.py"
+      - "src/dmdtrl/fjsp_optimization.py"
+      - "tests/test_fjsp_train.py"
+      - "tests/test_fjsp_evaluate.py"
+
+permissions:
+  contents: read
+
+jobs:
+  maskable-ppo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Phase-5 RL and OR dependencies
+        run: >-
+          python -m pip install --upgrade pip &&
+          pip install -e ".[dev,or]" &&
+          pip install "sb3-contrib>=2.9,<3"
+
+      - name: Validate FJSP training and evaluation contracts
+        run: >-
+          pytest
+          tests/test_fjsp_train.py
+          tests/test_fjsp_evaluate.py
+          tests/test_fjsp_optimization.py
+          tests/test_fjsp_env.py
+          tests/test_fjsp_core.py
+
+      - name: Train real Maskable PPO smoke model
+        run: >-
+          python -m dmdtrl.fjsp_train
+          --steps 4096
+          --seed 601
+          --n-steps 256
+          --batch-size 64
+          --jobs 6
+          --machines 3
+          --operations-min 2
+          --operations-max 3
+          --eligible-max 2
+          --setup-time 0.5
+          --output artifacts/fjsp_maskable_ppo
+          --metadata artifacts/fjsp_maskable_manifest.json
+          --device cpu
+          --quiet
+
+      - name: Evaluate learned and OR controllers on common instances
+        run: >-
+          python -m dmdtrl.fjsp_evaluate
+          --model artifacts/fjsp_maskable_ppo.zip
+          --device cpu
+          --seeds 2
+          --seed-start 40010
+          --jobs 6
+          --machines 3
+          --operations-min 2
+          --operations-max 3
+          --eligible-max 2
+          --setup-time 0.5
+          --cpsat-horizon 6
+          --cpsat-seconds 0.10
+          --bootstrap 100
+          --permutations 100
+          --raw-output artifacts/fjsp_eval_runs.csv
+          --summary-output artifacts/fjsp_eval_summary.csv
+          --comparisons-output artifacts/fjsp_eval_comparisons.csv
+
+      - name: Verify common-random-number panel and provenance
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          root = Path("artifacts")
+          model = root / "fjsp_maskable_ppo.zip"
+          manifest_path = root / "fjsp_maskable_manifest.json"
+          runs_path = root / "fjsp_eval_runs.csv"
+          summary_path = root / "fjsp_eval_summary.csv"
+          comparisons_path = root / "fjsp_eval_comparisons.csv"
+          assert model.stat().st_size > 0
+          manifest = json.loads(manifest_path.read_text())
+          assert manifest["algorithm"] == "MaskablePPO"
+          assert manifest["training_seed"] == 601
+          assert manifest["training_config"]["total_timesteps"] == 4096
+          assert manifest["mask_contract"]["validated_decisions"] > 0
+          assert manifest["runtime"]["sb3_contrib"] == "2.9.0"
+          assert manifest["runtime"]["stable_baselines3"] == "2.9.0"
+
+          with runs_path.open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          assert len(rows) == 8
+          expected_policies = {
+              "MASKABLE_PPO",
+              "ROLLING_HORIZON_CPSAT",
+              "EARLIEST_DUE_DATE",
+              "SHORTEST_PROCESSING",
+          }
+          assert {row["policy"] for row in rows} == expected_policies
+          assert {int(row["seed"]) for row in rows} == {40010, 40011}
+          assert {row["seed_regime"] for row in rows} == {"development"}
+          by_seed = defaultdict(list)
+          for row in rows:
+              by_seed[int(row["seed"])].append(row)
+          for seed_rows in by_seed.values():
+              assert len(seed_rows) == 4
+              assert len({row["instance_sha256"] for row in seed_rows}) == 1
+          ppo_rows = [row for row in rows if row["policy"] == "MASKABLE_PPO"]
+          assert all(float(row["mean_feasible_actions"]) >= 1.0 for row in ppo_rows)
+          assert all(float(row["unique_action_fraction"]) > 0.0 for row in ppo_rows)
+          assert summary_path.stat().st_size > 0
+          assert comparisons_path.stat().st_size > 0
+          PY
+
+      - name: Show smoke artifacts
+        run: |
+          cat artifacts/fjsp_maskable_manifest.json
+          cat artifacts/fjsp_eval_summary.csv
+          cat artifacts/fjsp_eval_comparisons.csv
+
+      - name: Upload FJSP Maskable PPO smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-maskable-ppo-smoke-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

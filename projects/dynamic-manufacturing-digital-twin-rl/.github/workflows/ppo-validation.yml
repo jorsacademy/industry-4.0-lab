@@ -1,0 +1,207 @@
+name: PPO Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/ppo-validation.yml"
+      - "configs/ppo_validation_campaign.json"
+      - "src/dmdtrl/ppo_campaign.py"
+      - "src/dmdtrl/train.py"
+      - "src/dmdtrl/research.py"
+      - "src/dmdtrl/policies.py"
+      - "src/dmdtrl/env.py"
+      - "tests/test_ppo_campaign.py"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build training-seed matrix
+        id: matrix
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          config = json.loads(Path("configs/ppo_validation_campaign.json").read_text())
+          matrix = {"training_seed": config["training_seeds"]}
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
+          PY
+
+  train-validate:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install RL dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[rl,dev]"
+
+      - name: Validate campaign contracts
+        run: pytest tests/test_ppo_campaign.py tests/test_train_config.py
+
+      - name: Train long-horizon PPO member
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/ppo_validation_campaign.json").read_text())
+          cfg = design["training_config"]
+          out = Path("artifacts") / f"seed_{seed}"
+          out.mkdir(parents=True, exist_ok=True)
+          command = [
+              "dmdtrl-train",
+              "--steps", str(cfg["total_timesteps"]),
+              "--seed", str(seed),
+              "--learning-rate", str(cfg["learning_rate"]),
+              "--n-steps", str(cfg["n_steps"]),
+              "--batch-size", str(cfg["batch_size"]),
+              "--gamma", str(cfg["gamma"]),
+              "--gae-lambda", str(cfg["gae_lambda"]),
+              "--ent-coef", str(cfg["ent_coef"]),
+              "--hidden-units", str(cfg["hidden_units"]),
+              "--device", str(cfg["device"]),
+              "--output", str(out / "ppo_dispatcher"),
+              "--metadata", str(out / "training_manifest.json"),
+              "--quiet",
+          ]
+          subprocess.run(command, check=True)
+          PY
+
+      - name: Evaluate member on validation seeds only
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/ppo_validation_campaign.json").read_text())
+          out = Path("artifacts") / f"seed_{seed}"
+          command = [
+              "dmdtrl-research",
+              "--model", str(out / "ppo_dispatcher.zip"),
+              "--seeds", str(design["validation_seed_count"]),
+              "--seed-start", str(design["validation_seed_start"]),
+              "--bootstrap", str(design["bootstrap"]),
+              "--permutations", str(design["permutations"]),
+              "--raw-output", str(out / "validation_runs.csv"),
+              "--summary-output", str(out / "validation_summary.csv"),
+              "--comparisons-output", str(out / "validation_ppo_comparisons.csv"),
+          ]
+          subprocess.run(command, check=True)
+          PY
+
+      - name: Verify member seed boundary and manifest
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import os
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/ppo_validation_campaign.json").read_text())
+          root = Path("artifacts") / f"seed_{seed}"
+          with (root / "validation_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          observed = sorted(int(row["seed"]) for row in rows if row["policy"] == "PPO")
+          expected = list(range(
+              design["validation_seed_start"],
+              design["validation_seed_start"] + design["validation_seed_count"],
+          ))
+          assert observed == expected
+          assert max(observed) < design["final_test_seed_start"]
+          manifest = json.loads((root / "training_manifest.json").read_text())
+          assert manifest["training_seed"] == seed
+          assert manifest["training_config"]["total_timesteps"] == design["training_config"]["total_timesteps"]
+          assert (root / "ppo_dispatcher.zip").stat().st_size > 0
+          PY
+
+      - name: Upload PPO member artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppo-validation-seed-${{ matrix.training_seed }}-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: [plan, train-validate]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install aggregation dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+
+      - name: Download all PPO member artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ppo-validation-seed-*-${{ github.sha }}
+          path: artifacts
+          merge-multiple: true
+
+      - name: Aggregate and freeze representative validation model
+        run: >-
+          dmdtrl-ppo-campaign
+          --config configs/ppo_validation_campaign.json
+          --artifacts-root artifacts
+          --runs-output campaign/ppo_validation_runs.csv
+          --summary-output campaign/ppo_training_seed_summary.csv
+          --manifest-output campaign/ppo_validation_manifest.json
+
+      - name: Show PPO validation manifest
+        run: cat campaign/ppo_validation_manifest.json
+
+      - name: Upload PPO validation campaign artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppo-validation-campaign-${{ github.sha }}
+          path: campaign/
+          if-no-files-found: error
+          retention-days: 90

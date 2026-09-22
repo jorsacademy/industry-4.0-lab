@@ -1,0 +1,128 @@
+name: FJSP OR Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/fjsp-or-validation.yml"
+      - "src/dmdtrl/fjsp_or_sensitivity.py"
+      - "src/dmdtrl/fjsp_or_selection.py"
+      - "src/dmdtrl/fjsp_optimization.py"
+      - "src/dmdtrl/fjsp_generator.py"
+      - "src/dmdtrl/fjsp_simulator.py"
+      - "src/dmdtrl/fjsp_models.py"
+      - "src/dmdtrl/fjsp_evaluate.py"
+      - "tests/test_fjsp_or_validation.py"
+      - "tests/test_fjsp_optimization.py"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fjsp-or-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-fjsp-cpsat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install OR dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,or]"
+
+      - name: Validate sensitivity and selector contracts
+        run: pytest tests/test_fjsp_or_validation.py tests/test_fjsp_optimization.py tests/test_fjsp_evaluate.py
+
+      - name: Run predeclared 30-seed 3x3 validation sweep
+        run: >-
+          python -m dmdtrl.fjsp_or_sensitivity
+          --seeds 30
+          --seed-start 41000
+          --horizon 4
+          --horizon 8
+          --horizon 12
+          --solver-seconds 0.02
+          --solver-seconds 0.05
+          --solver-seconds 0.10
+          --reference-horizon 12
+          --reference-solver-seconds 0.10
+          --jobs 12
+          --machines 5
+          --setup-time 1.0
+          --bootstrap 1000
+          --permutations 2000
+          --raw-output artifacts/fjsp_or_validation_runs.csv
+          --summary-output artifacts/fjsp_or_validation_summary.csv
+          --comparisons-output artifacts/fjsp_or_validation_comparisons.csv
+
+      - name: Select validation-only operating point
+        run: >-
+          python -m dmdtrl.fjsp_or_selection
+          --raw-input artifacts/fjsp_or_validation_runs.csv
+          --summary-input artifacts/fjsp_or_validation_summary.csv
+          --output artifacts/fjsp_cpsat_selection.json
+          --validation-seed-start 41000
+          --validation-seeds 30
+          --quality-tolerance-pct 2.0
+          --max-fallback-rate-pct 1.0
+
+      - name: Verify validation completeness and freeze contract
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          root = Path("artifacts")
+          with (root / "fjsp_or_validation_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          assert len(rows) == 270
+          policies = {row["policy"] for row in rows}
+          assert len(policies) == 9
+          expected_seeds = set(range(41000, 41030))
+          by_policy = defaultdict(set)
+          fingerprints = defaultdict(set)
+          for row in rows:
+              seed = int(row["seed"])
+              assert row["seed_regime"] == "validation"
+              by_policy[row["policy"]].add(seed)
+              fingerprints[seed].add(row["instance_sha256"])
+          assert all(seeds == expected_seeds for seeds in by_policy.values())
+          assert all(len(values) == 1 for values in fingerprints.values())
+
+          manifest = json.loads((root / "fjsp_cpsat_selection.json").read_text())
+          assert manifest["controller"] == "FJSP_ROLLING_HORIZON_CP_SAT"
+          assert manifest["validation_seed_start"] == 41000
+          assert manifest["validation_seed_end"] == 41029
+          assert manifest["validation_seed_count"] == 30
+          assert manifest["solver_fallback_rate_mean"] <= 0.01 + 1e-12
+          assert manifest["weighted_tardiness_mean"] <= (
+              manifest["quality_threshold_weighted_tardiness"] + 1e-12
+          )
+          assert manifest["cpsat_horizon"] in {4, 8, 12}
+          assert manifest["solver_budget_ms"] in {20.0, 50.0, 100.0}
+          PY
+
+      - name: Show validation outputs
+        run: |
+          cat artifacts/fjsp_or_validation_summary.csv
+          cat artifacts/fjsp_cpsat_selection.json
+
+      - name: Upload FJSP OR validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-or-validation-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30

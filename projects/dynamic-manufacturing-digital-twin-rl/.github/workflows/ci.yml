@@ -1,0 +1,110 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package and test tools
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,or]"
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Test
+        run: pytest --cov=dmdtrl --cov-report=term-missing --cov-fail-under=85
+
+      - name: Research harness smoke test
+        if: matrix.python-version == '3.11'
+        run: >-
+          dmdtrl-research
+          --seeds 2
+          --bootstrap 100
+          --permutations 100
+          --raw-output /tmp/research_runs.csv
+          --summary-output /tmp/research_summary.csv
+
+      - name: Distribution-shift smoke test
+        if: matrix.python-version == '3.11'
+        run: >-
+          dmdtrl-stress
+          --seeds 1
+          --seed-start 30000
+          --scenario nominal
+          --scenario demand_140
+          --include-cpsat
+          --cpsat-horizon 6
+          --cpsat-solver-seconds 0.10
+          --bootstrap 100
+          --permutations 100
+          --raw-output /tmp/stress_runs.csv
+          --summary-output /tmp/stress_summary.csv
+          --cpsat-comparisons-output /tmp/stress_cpsat_comparisons.csv
+
+      - name: Rolling-horizon CP-SAT smoke test
+        if: matrix.python-version == '3.11'
+        run: >-
+          dmdtrl-or
+          --seeds 1
+          --seed-start 20000
+          --horizon 6
+          --solver-seconds 0.10
+          --bootstrap 100
+          --permutations 100
+          --raw-output /tmp/or_runs.csv
+          --summary-output /tmp/or_summary.csv
+          --comparisons-output /tmp/or_comparisons.csv
+
+      - name: CP-SAT sensitivity smoke test
+        if: matrix.python-version == '3.11'
+        run: >-
+          dmdtrl-or-sensitivity
+          --seeds 1
+          --seed-start 10000
+          --horizon 4
+          --horizon 6
+          --solver-seconds 0.05
+          --solver-seconds 0.10
+          --reference-horizon 6
+          --reference-solver-seconds 0.10
+          --bootstrap 100
+          --permutations 100
+          --raw-output /tmp/or_sensitivity_runs.csv
+          --summary-output /tmp/or_sensitivity_summary.csv
+          --comparisons-output /tmp/or_sensitivity_comparisons.csv
+
+      - name: Phase-5 FJSP CP-SAT smoke test
+        if: matrix.python-version == '3.11'
+        run: >-
+          python -m dmdtrl.fjsp_or_benchmark
+          --seeds 1
+          --seed-start 40000
+          --jobs 4
+          --machines 3
+          --job-horizon 4
+          --solver-seconds 0.10
+          --setup-time 0.5
+          --raw-output /tmp/fjsp_or_runs.csv
+          --summary-output /tmp/fjsp_or_summary.csv

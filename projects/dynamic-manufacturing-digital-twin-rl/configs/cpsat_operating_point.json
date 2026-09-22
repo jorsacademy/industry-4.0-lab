@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "controller": "CP_SAT_RH",
+  "status": "frozen_for_final_evaluation",
+  "selected_policy": "CP_SAT_H8_B100000US",
+  "cpsat_horizon": 8,
+  "solver_seconds": 0.1,
+  "solver_budget_ms": 100.0,
+  "validation": {
+    "seed_start": 10000,
+    "seed_end": 10029,
+    "seed_count": 30,
+    "weighted_tardiness_mean": 72.51006333041943,
+    "mean_decision_time_ms_mean": 21.408038348333115,
+    "solver_fallback_rate_mean": 0.0,
+    "best_reliable_pareto_weighted_tardiness_mean": 72.51006333041943,
+    "quality_tolerance_pct": 2.0,
+    "quality_threshold_weighted_tardiness": 73.96026459702782,
+    "max_fallback_rate_pct": 1.0,
+    "pareto_configurations": 4,
+    "reliable_pareto_configurations": 4,
+    "acceptable_pareto_configurations": 1
+  },
+  "selection_rule": "Restrict to Pareto-optimal configurations satisfying the declared maximum solver fallback rate. Within 2% of the best reliable validation weighted tardiness, select the lowest measured mean decision latency; break ties by WTT, fallback rate, solver budget, horizon, then policy name.",
+  "reference_comparison": {
+    "reference_policy": "CP_SAT_H12_B100000US",
+    "weighted_tardiness_mean_improvement": 4.29469883117689,
+    "weighted_tardiness_percent_improvement": 5.591709042911811,
+    "weighted_tardiness_improvement_ci_low": -0.953882434085052,
+    "weighted_tardiness_improvement_ci_high": 11.009721442727612,
+    "weighted_tardiness_p_value": 0.2249550089982003,
+    "decision_time_mean_improvement_ms": 0.3256167905560249,
+    "decision_time_improvement_ci_low_ms": -0.0973411753188065,
+    "decision_time_improvement_ci_high_ms": 0.8678245880973069,
+    "decision_time_p_value": 0.2713457308538292
+  },
+  "provenance": {
+    "branch_head_sha": "0e158878586d1c3774ac38dd52a0bd7a1c937cf8",
+    "workflow_pr_merge_sha": "aae20d15ee32d2b49b7e61e4a6ffe8961d33a08c",
+    "workflow_run_id": 33207297130,
+    "artifact_id": 9700249692,
+    "artifact_name": "cpsat-validation-aae20d15ee32d2b49b7e61e4a6ffe8961d33a08c",
+    "artifact_sha256": "c1cb5629abb40a6a043064bc288ba5e0cbb098bb52c38b4de6f98a7f61332163"
+  },
+  "scientific_boundary": "This configuration was selected using validation seeds only. It must remain unchanged for nominal final-test seeds 20000+ and stress final-test seeds 30000+."
+}

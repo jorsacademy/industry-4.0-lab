@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "phase": 5,
+  "status": "validation_rejected_final_test_embargoed",
+  "controller": "DIRECT_MASKABLE_PPO_FJSP_ACTION",
+  "source_pull_request": 19,
+  "source_workflow_run_id": 33253382800,
+  "source_branch_head_sha": "ec690f6de66127389c12c143b7d62f3c200d34a7",
+  "source_pull_request_merge_sha": "65539b62c1b307ac36a910d6647c03bea410915c",
+  "campaign_artifact": {
+    "artifact_id": 9715114355,
+    "artifact_name": "fjsp-ppo-validation-campaign-168aced2dbc098196596ece993a5197829cc2d4c",
+    "archive_sha256": "6b3647088910ace9ede39fa4c50f390512c55409aecc9730e5be0c5eee9c8308"
+  },
+  "validation_panel": {
+    "instance_seed_start": 41100,
+    "instance_seed_count": 30,
+    "instance_seed_end": 41129,
+    "training_seeds": [701, 1701, 2701, 3701, 4701],
+    "training_timesteps_per_seed": 150000,
+    "inference_unit": "training_seed",
+    "final_test_seed_start": 42000,
+    "final_test_seed_end": 42099,
+    "final_test_used": false
+  },
+  "frozen_baselines": {
+    "ROLLING_HORIZON_CPSAT": {
+      "job_horizon": 4,
+      "solver_seconds": 0.1,
+      "weighted_tardiness_mean": 20.415928095416565,
+      "weighted_tardiness_ci_low": 16.042903303910514,
+      "weighted_tardiness_ci_high": 24.807705835942013,
+      "mean_decision_time_ms": 25.57401521042538,
+      "fallback_rate": 0.0
+    },
+    "EARLIEST_DUE_DATE": {
+      "weighted_tardiness_mean": 33.58724317742694,
+      "weighted_tardiness_ci_low": 25.25187239039927,
+      "weighted_tardiness_ci_high": 43.72539954127427,
+      "mean_decision_time_ms": 0.009636057080983097
+    },
+    "SHORTEST_PROCESSING": {
+      "weighted_tardiness_mean": 52.94334183226207,
+      "weighted_tardiness_ci_low": 41.80039443626327,
+      "weighted_tardiness_ci_high": 64.75522996663385,
+      "mean_decision_time_ms": 0.01076623146334341
+    }
+  },
+  "direct_maskable_ppo": {
+    "weighted_tardiness_training_mean": 82.51182222324977,
+    "weighted_tardiness_training_median": 82.9171689041286,
+    "weighted_tardiness_training_std": 1.9018090925142246,
+    "weighted_tardiness_training_min": 79.35171951275692,
+    "weighted_tardiness_training_max": 84.51925928736436,
+    "mean_decision_time_ms_training_mean": 0.36973011036413406,
+    "representative_training_seed": 1701,
+    "representative_model_role": "deployment_and_demo_only",
+    "members": [
+      {
+        "training_seed": 701,
+        "weighted_tardiness_mean": 84.51925928736436,
+        "mean_decision_time_ms": 0.2990738795310025,
+        "model_sha256": "a27ee665ac0133a01dd957c8a407fa31a0e110bbd587e17d0ab1d8206351564f"
+      },
+      {
+        "training_seed": 1701,
+        "weighted_tardiness_mean": 82.9171689041286,
+        "mean_decision_time_ms": 0.45543375401491487,
+        "model_sha256": "3135f6411a948631116f70a0c605eb674034f02809d68af4da943f18355c11a9"
+      },
+      {
+        "training_seed": 2701,
+        "weighted_tardiness_mean": 82.82259354957561,
+        "mean_decision_time_ms": 0.3804399156601099,
+        "model_sha256": "8de2eaff7ecda72d6ab43d1295f45744af7e67970c479438f62950b42ac06a59"
+      },
+      {
+        "training_seed": 3701,
+        "weighted_tardiness_mean": 82.94836986242332,
+        "mean_decision_time_ms": 0.45293248306259554,
+        "model_sha256": "be13460ed1c91c3ab127210d3b08000b4e45d151bc9f832a4bdf8b5d4e0ee4d9"
+      },
+      {
+        "training_seed": 4701,
+        "weighted_tardiness_mean": 79.35171951275692,
+        "mean_decision_time_ms": 0.26077051955204744,
+        "model_sha256": "c3fffb89964c24a4609b86bcfb8dc9e6be43e09c663d3958614417a7c6bdc950"
+      }
+    ]
+  },
+  "training_seed_level_improvements": {
+    "vs_EARLIEST_DUE_DATE": {
+      "mean": -48.92457904582282,
+      "ci_low": -50.27850507739147,
+      "ci_high": -47.190656091878644,
+      "training_seed_win_fraction": 0.0
+    },
+    "vs_ROLLING_HORIZON_CPSAT": {
+      "mean": -62.0958941278332,
+      "ci_low": -63.44982015940184,
+      "ci_high": -60.36197117388904,
+      "training_seed_win_fraction": 0.0
+    },
+    "vs_SHORTEST_PROCESSING": {
+      "mean": -29.568480390987695,
+      "ci_low": -30.916166230897392,
+      "ci_high": -27.840641623910997,
+      "training_seed_win_fraction": 0.0
+    }
+  },
+  "decision": {
+    "accept_for_final_test": false,
+    "reason": "All five independent direct-action Maskable PPO training realizations underperformed CP-SAT, EDD, and SPT on the validation panel; no training seed achieved a positive paired mean WTT improvement against any baseline.",
+    "next_research_step": "Redesign PPO as a small fixed-action hyper-heuristic/operator selector over strong feasible dispatching rules. Keep seeds 42000-42099 embargoed until the redesigned controller passes a fresh validation gate."
+  }
+}

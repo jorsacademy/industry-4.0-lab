@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "phase": 5,
+  "status": "predeclared_before_training",
+  "algorithm": "MaskablePPO",
+  "training_seeds": [701, 1701, 2701, 3701, 4701],
+  "training_config": {
+    "total_timesteps": 150000,
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 128,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "ent_coef": 0.01,
+    "hidden_units": 128,
+    "device": "cpu"
+  },
+  "environment_config": {
+    "generator": {
+      "n_jobs": 12,
+      "n_machines": 5,
+      "n_families": 4,
+      "operations_min": 2,
+      "operations_max": 4,
+      "eligible_machines_min": 1,
+      "eligible_machines_max": 3,
+      "mean_interarrival": 1.0,
+      "processing_min": 2.0,
+      "processing_max": 10.0,
+      "due_date_factor_min": 1.5,
+      "due_date_factor_max": 2.5
+    },
+    "default_setup_time": 1.0,
+    "operation_bonus": 0.05,
+    "job_completion_bonus": 1.0,
+    "waiting_weight": 0.02,
+    "setup_weight": 0.05,
+    "tardiness_weight": 0.2
+  },
+  "validation_seed_start": 41100,
+  "validation_seed_count": 30,
+  "validation_seed_end": 41129,
+  "or_tuning_seed_start": 41000,
+  "or_tuning_seed_count": 30,
+  "or_tuning_seed_end": 41029,
+  "final_test_seed_start": 42000,
+  "final_test_seed_count": 100,
+  "final_test_seed_end": 42099,
+  "frozen_cpsat_config_path": "configs/fjsp_cpsat_validation_freeze.json",
+  "frozen_cpsat_policy": "FJSP_CPSAT_H4_B100MS",
+  "representative_model_rule": "Choose the completed training seed whose validation weighted-tardiness mean is closest to the median across all declared training seeds; break ties by lower decision latency, then lower training seed. The representative model is for deployment/demo continuity only.",
+  "scientific_claim_rule": "Validation and final scientific conclusions must retain all five declared Maskable PPO training-seed realizations. Do not report the best training seed as the algorithm result. Compare each member to the same frozen CP-SAT and heuristic baseline panel on common instance seeds.",
+  "selection_data_boundary": {
+    "or_tuning": "41000-41029",
+    "ppo_validation": "41100-41129",
+    "phase5_final_nominal": "42000-42099",
+    "final_test_used_for_selection": false
+  }
+}

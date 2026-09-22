@@ -1,0 +1,173 @@
+name: Final Comparative Campaign
+
+# Operational trigger commit only; frozen experiment design is unchanged.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/final-comparison.yml"
+      - "configs/final_comparative_campaign.json"
+      - "configs/ppo_validation_freeze.json"
+      - "configs/cpsat_operating_point.json"
+      - "src/dmdtrl/final_campaign.py"
+      - "src/dmdtrl/final_execute.py"
+      - "src/dmdtrl/experiments.py"
+      - "src/dmdtrl/or_experiments.py"
+      - "src/dmdtrl/or_policy.py"
+      - "src/dmdtrl/env.py"
+      - "src/dmdtrl/scenarios.py"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: final-comparative-campaign
+  cancel-in-progress: false
+
+jobs:
+  final-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      PYTHONHASHSEED: "0"
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install frozen-controller dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[rl,or,dev]"
+
+      - name: Validate final campaign contracts
+        run: pytest tests/test_final_campaign.py tests/test_final_execute.py
+
+      - name: Download frozen PPO validation members
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ppo-validation-seed-*
+          path: frozen_models
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 33210409297
+
+      - name: Verify frozen PPO artifacts before final-test access
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from dmdtrl.final_campaign import verify_frozen_models
+
+          freeze = json.loads(Path("configs/ppo_validation_freeze.json").read_text())
+          verified = verify_frozen_models(Path("frozen_models"), freeze)
+          expected = freeze["training_design"]["training_seeds"]
+          assert sorted(verified) == sorted(expected)
+          print("Verified frozen PPO members:", sorted(verified))
+          PY
+
+      - name: Run predeclared nominal and stress final tests
+        run: >-
+          python -m dmdtrl.final_execute
+          --config configs/final_comparative_campaign.json
+          --ppo-freeze configs/ppo_validation_freeze.json
+          --cpsat-freeze configs/cpsat_operating_point.json
+          --models-root frozen_models
+          --output-dir final_results
+
+      - name: Verify final-test completeness and seed boundaries
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          design = json.loads(Path("configs/final_comparative_campaign.json").read_text())
+          with Path("final_results/final_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          with Path("final_results/primary_comparisons.csv").open(
+              newline="", encoding="utf-8"
+          ) as handle:
+              primary = list(csv.DictReader(handle))
+
+          scenarios = ["nominal", *design["stress"]["scenarios"]]
+          assert len(scenarios) == 10
+          expected_policies = 8 + len(design["ppo_training_seeds"]) + 1 + 1
+          expected_rows = expected_policies * design["nominal"]["seed_count"] * len(scenarios)
+          assert len(rows) == expected_rows, (len(rows), expected_rows)
+
+          grouped = defaultdict(list)
+          for row in rows:
+              grouped[row["scenario"]].append(row)
+          assert set(grouped) == set(scenarios)
+
+          nominal_expected = set(
+              range(
+                  design["nominal"]["seed_start"],
+                  design["nominal"]["seed_start"] + design["nominal"]["seed_count"],
+              )
+          )
+          stress_expected = set(
+              range(
+                  design["stress"]["seed_start"],
+                  design["stress"]["seed_start"] + design["stress"]["seed_count"],
+              )
+          )
+          for scenario, scenario_rows in grouped.items():
+              observed = {int(row["seed"]) for row in scenario_rows}
+              assert observed == (nominal_expected if scenario == "nominal" else stress_expected)
+              policies = {row["policy"] for row in scenario_rows}
+              assert len(policies) == expected_policies
+
+          primary_wtt = [
+              row
+              for row in primary
+              if row["analysis"] == "ppo_training_seed_average_vs_primary_baseline"
+              and row["metric"] == "weighted_tardiness"
+          ]
+          assert len(primary_wtt) == 20
+          assert all(row["primary_hypothesis"] == "True" for row in primary_wtt)
+          assert all(0.0 <= float(row["p_value_holm"]) <= 1.0 for row in primary_wtt)
+
+          manifest = json.loads(Path("final_results/final_campaign_manifest.json").read_text())
+          assert manifest["status"] == "final_test_complete"
+          assert manifest["no_final_test_tuning"] is True
+          print(f"Verified {len(rows)} seed-level rows across {len(scenarios)} scenarios")
+          PY
+
+      - name: Hash final result package
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path("final_results")
+          hashes = {}
+          for path in sorted(root.iterdir()):
+              if path.is_file() and path.name != "final_result_hashes.json":
+                  hashes[path.name] = hashlib.sha256(path.read_bytes()).hexdigest()
+          (root / "final_result_hashes.json").write_text(
+              json.dumps(hashes, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(hashes, indent=2, sort_keys=True))
+          PY
+
+      - name: Upload final comparative evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-comparative-${{ github.sha }}
+          path: final_results/
+          if-no-files-found: error
+          retention-days: 90

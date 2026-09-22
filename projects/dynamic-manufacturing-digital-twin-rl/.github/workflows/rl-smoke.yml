@@ -1,0 +1,120 @@
+name: RL Smoke
+
+on:
+  pull_request:
+    paths:
+      - "src/dmdtrl/train.py"
+      - "src/dmdtrl/research.py"
+      - "src/dmdtrl/policies.py"
+      - "src/dmdtrl/env.py"
+      - "src/dmdtrl/stress.py"
+      - "pyproject.toml"
+      - ".github/workflows/rl-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ppo-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install RL dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[rl,dev]"
+
+      - name: Train short PPO model
+        run: >-
+          dmdtrl-train
+          --steps 2048
+          --seed 42
+          --n-steps 256
+          --batch-size 64
+          --output artifacts/ppo_smoke
+          --metadata artifacts/training_manifest.json
+          --device cpu
+          --quiet
+
+      - name: Evaluate nominal paired seeds
+        run: >-
+          dmdtrl-research
+          --model artifacts/ppo_smoke.zip
+          --seeds 3
+          --seed-start 20000
+          --bootstrap 200
+          --permutations 200
+          --raw-output artifacts/nominal_runs.csv
+          --summary-output artifacts/nominal_summary.csv
+          --comparisons-output artifacts/nominal_ppo_comparisons.csv
+
+      - name: Evaluate distribution shifts
+        run: >-
+          dmdtrl-stress
+          --model artifacts/ppo_smoke.zip
+          --seeds 2
+          --seed-start 30000
+          --scenario nominal
+          --scenario demand_140
+          --bootstrap 200
+          --permutations 200
+          --raw-output artifacts/stress_runs.csv
+          --summary-output artifacts/stress_summary.csv
+          --comparisons-output artifacts/stress_ppo_comparisons.csv
+
+      - name: Validate reproducibility artifacts
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          root = Path("artifacts")
+          required = [
+              "ppo_smoke.zip",
+              "training_manifest.json",
+              "nominal_runs.csv",
+              "nominal_summary.csv",
+              "nominal_ppo_comparisons.csv",
+              "stress_runs.csv",
+              "stress_summary.csv",
+              "stress_ppo_comparisons.csv",
+          ]
+          for name in required:
+              path = root / name
+              if not path.exists() or path.stat().st_size == 0:
+                  raise SystemExit(f"missing/empty artifact: {path}")
+
+          manifest = json.loads((root / "training_manifest.json").read_text())
+          assert manifest["algorithm"] == "PPO"
+          assert manifest["training_seed"] == 42
+          assert manifest["git"]["sha"]
+          assert manifest["runtime"]["packages"]["stable-baselines3"]
+
+          with (root / "nominal_runs.csv").open(newline="") as handle:
+              rows = list(csv.DictReader(handle))
+          assert {int(row["seed"]) for row in rows} == {20000, 20001, 20002}
+          assert "PPO" in {row["policy"] for row in rows}
+
+          with (root / "stress_runs.csv").open(newline="") as handle:
+              stress_rows = list(csv.DictReader(handle))
+          assert {row["scenario"] for row in stress_rows} == {"nominal", "demand_140"}
+          assert "PPO" in {row["policy"] for row in stress_rows}
+          PY
+
+      - name: Upload PPO smoke artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ppo-smoke-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "phase": 5,
+  "status": "validation_block_reserved_before_v2_implementation",
+  "algorithm": "PPO",
+  "controller": "FJSP_HYPER_HEURISTIC",
+  "architecture": "operator_selection_v2",
+  "predecessor_architecture": "operator_selection_v1",
+  "predecessor_validation_decision_path": "configs/fjsp_hh_validation_decision.json",
+  "architecture_hypothesis": "The v1 global observation is insufficient for contextual operator selection; expose operator-conditioned features for each operator's currently proposed feasible assignment while preserving the fixed feasible operator action space.",
+  "action_space": {
+    "status": "frozen_from_v1",
+    "operator_names": [
+      "EARLIEST_DUE_DATE",
+      "SHORTEST_PROCESSING",
+      "MINIMUM_SETUP",
+      "HIGHEST_PRIORITY",
+      "MINIMUM_SLACK",
+      "CRITICAL_RATIO",
+      "SAME_FAMILY_FIRST",
+      "WEIGHTED_TARDINESS_RISK"
+    ]
+  },
+  "observation_direction": {
+    "family": "global_plus_operator_conditioned_candidate_features",
+    "feature_schema_status": "development_candidate_not_validation_frozen",
+    "candidate_feature_families": [
+      "slack",
+      "processing_duration",
+      "setup_duration",
+      "machine_readiness_or_earliest_start",
+      "job_priority",
+      "critical_ratio",
+      "projected_weighted_tardiness_risk"
+    ]
+  },
+  "seed_boundaries": {
+    "development_seed_start": 40000,
+    "development_seed_end": 40999,
+    "consumed_v1_validation_seed_start": 41200,
+    "consumed_v1_validation_seed_end": 41229,
+    "v2_validation_seed_start": 41300,
+    "v2_validation_seed_end": 41329,
+    "v2_validation_seed_count": 30,
+    "phase5_final_seed_start": 42000,
+    "phase5_final_seed_end": 42099
+  },
+  "access_policy": {
+    "development_data_may_be_used_for_architecture_diagnostics": true,
+    "v1_validation_may_be_used_only_as_historical_evidence": true,
+    "v1_validation_may_be_reused_for_v2_selection": false,
+    "v2_validation_access_authorized": false,
+    "phase5_final_access_authorized": false
+  },
+  "future_validation_freeze_requirements": {
+    "exact_observation_schema_must_be_frozen": true,
+    "training_seeds_must_be_frozen": true,
+    "ppo_hyperparameters_must_be_frozen": true,
+    "baseline_set_must_include_all_eight_fixed_operators": true,
+    "baseline_set_must_include_frozen_cpsat": true,
+    "hyperparameter_search_on_v2_validation_forbidden": true,
+    "validation_access_requires_separate_merged_protocol": true
+  },
+  "frozen_cpsat_policy": "FJSP_CPSAT_H4_B100MS",
+  "scientific_boundary": "This reservation creates an untouched independent validation block before v2 implementation. It does not authorize reading, evaluating, training on, or selecting with seeds 41300-41329. Development diagnostics must remain inside 40000-40999 until a separate exact v2 validation protocol is merged."
+}

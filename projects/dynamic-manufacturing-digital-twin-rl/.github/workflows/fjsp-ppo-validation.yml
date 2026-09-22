@@ -1,0 +1,368 @@
+name: FJSP PPO Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/fjsp-ppo-validation.yml"
+      - "configs/fjsp_cpsat_validation_freeze.json"
+      - "configs/fjsp_ppo_validation_design.json"
+      - "src/dmdtrl/fjsp_ppo_campaign.py"
+      - "src/dmdtrl/fjsp_ppo_member.py"
+      - "src/dmdtrl/fjsp_train.py"
+      - "src/dmdtrl/fjsp_evaluate.py"
+      - "src/dmdtrl/fjsp_env.py"
+      - "src/dmdtrl/fjsp_generator.py"
+      - "src/dmdtrl/fjsp_models.py"
+      - "src/dmdtrl/fjsp_simulator.py"
+      - "src/dmdtrl/fjsp_optimization.py"
+      - "src/dmdtrl/fjsp_baselines.py"
+      - "tests/test_fjsp_ppo_campaign.py"
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build frozen training-seed matrix
+        id: matrix
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          design = json.loads(Path("configs/fjsp_ppo_validation_design.json").read_text())
+          freeze = json.loads(Path("configs/fjsp_cpsat_validation_freeze.json").read_text())
+          assert design["algorithm"] == "MaskablePPO"
+          assert design["validation_seed_start"] == 41100
+          assert design["validation_seed_end"] == 41129
+          assert design["final_test_seed_start"] == 42000
+          assert freeze["selected_policy"] == design["frozen_cpsat_policy"]
+          assert freeze["cpsat_config"]["job_horizon"] == 4
+          assert freeze["cpsat_config"]["solver_seconds"] == 0.1
+          matrix = {"training_seed": design["training_seeds"]}
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"matrix={json.dumps(matrix, separators=(',', ':'))}\n")
+          PY
+
+  baseline-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install OR dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,or]"
+
+      - name: Validate FJSP campaign contracts
+        run: >-
+          pytest
+          tests/test_fjsp_ppo_campaign.py
+          tests/test_fjsp_evaluate.py
+          tests/test_fjsp_optimization.py
+
+      - name: Evaluate frozen baseline panel once
+        run: >-
+          python -m dmdtrl.fjsp_evaluate
+          --seeds 30
+          --seed-start 41100
+          --jobs 12
+          --machines 5
+          --operations-min 2
+          --operations-max 4
+          --eligible-max 3
+          --setup-time 1.0
+          --cpsat-horizon 4
+          --cpsat-seconds 0.10
+          --bootstrap 2000
+          --permutations 5000
+          --raw-output baseline/baseline_runs.csv
+          --summary-output baseline/baseline_summary.csv
+          --comparisons-output baseline/baseline_comparisons.csv
+
+      - name: Verify frozen baseline and common instances
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from collections import defaultdict
+          from pathlib import Path
+
+          design = json.loads(Path("configs/fjsp_ppo_validation_design.json").read_text())
+          freeze = json.loads(Path("configs/fjsp_cpsat_validation_freeze.json").read_text())
+          with Path("baseline/baseline_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          expected_seeds = set(range(41100, 41130))
+          expected_policies = {
+              "EARLIEST_DUE_DATE",
+              "ROLLING_HORIZON_CPSAT",
+              "SHORTEST_PROCESSING",
+          }
+          assert len(rows) == 90
+          assert {row["policy"] for row in rows} == expected_policies
+          by_policy = defaultdict(set)
+          fingerprints = defaultdict(set)
+          for row in rows:
+              seed = int(row["seed"])
+              assert row["seed_regime"] == "validation"
+              assert seed < design["final_test_seed_start"]
+              by_policy[row["policy"]].add(seed)
+              fingerprints[seed].add(row["instance_sha256"])
+          assert all(seeds == expected_seeds for seeds in by_policy.values())
+          assert all(len(values) == 1 for values in fingerprints.values())
+          assert freeze["cpsat_config"]["job_horizon"] == 4
+          assert freeze["cpsat_config"]["solver_seconds"] == 0.1
+          PY
+
+      - name: Upload frozen baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-ppo-baseline-${{ github.sha }}
+          path: baseline/
+          if-no-files-found: error
+          retention-days: 90
+
+  train-validate:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install Maskable PPO dependencies
+        run: >-
+          python -m pip install --upgrade pip &&
+          pip install -e ".[dev]" &&
+          pip install "sb3-contrib>=2.9,<3"
+
+      - name: Validate Maskable PPO contracts
+        run: >-
+          pytest
+          tests/test_fjsp_ppo_campaign.py
+          tests/test_fjsp_train.py
+          tests/test_fjsp_env.py
+
+      - name: Train predeclared Maskable PPO member
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/fjsp_ppo_validation_design.json").read_text())
+          train = design["training_config"]
+          env = design["environment_config"]
+          gen = env["generator"]
+          out = Path("artifacts") / f"seed_{seed}"
+          out.mkdir(parents=True, exist_ok=True)
+          command = [
+              "python", "-m", "dmdtrl.fjsp_train",
+              "--steps", str(train["total_timesteps"]),
+              "--seed", str(seed),
+              "--learning-rate", str(train["learning_rate"]),
+              "--n-steps", str(train["n_steps"]),
+              "--batch-size", str(train["batch_size"]),
+              "--gamma", str(train["gamma"]),
+              "--gae-lambda", str(train["gae_lambda"]),
+              "--ent-coef", str(train["ent_coef"]),
+              "--hidden-units", str(train["hidden_units"]),
+              "--device", str(train["device"]),
+              "--jobs", str(gen["n_jobs"]),
+              "--machines", str(gen["n_machines"]),
+              "--operations-min", str(gen["operations_min"]),
+              "--operations-max", str(gen["operations_max"]),
+              "--eligible-max", str(gen["eligible_machines_max"]),
+              "--setup-time", str(env["default_setup_time"]),
+              "--output", str(out / "fjsp_maskable_ppo"),
+              "--metadata", str(out / "training_manifest.json"),
+              "--quiet",
+          ]
+          subprocess.run(command, check=True)
+          PY
+
+      - name: Evaluate member on PPO validation seeds only
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/fjsp_ppo_validation_design.json").read_text())
+          gen = design["environment_config"]["generator"]
+          out = Path("artifacts") / f"seed_{seed}"
+          command = [
+              "python", "-m", "dmdtrl.fjsp_ppo_member",
+              "--model", str(out / "fjsp_maskable_ppo.zip"),
+              "--training-seed", str(seed),
+              "--device", str(design["training_config"]["device"]),
+              "--seeds", str(design["validation_seed_count"]),
+              "--seed-start", str(design["validation_seed_start"]),
+              "--jobs", str(gen["n_jobs"]),
+              "--machines", str(gen["n_machines"]),
+              "--operations-min", str(gen["operations_min"]),
+              "--operations-max", str(gen["operations_max"]),
+              "--eligible-max", str(gen["eligible_machines_max"]),
+              "--setup-time", str(design["environment_config"]["default_setup_time"]),
+              "--bootstrap", "2000",
+              "--raw-output", str(out / "ppo_validation_runs.csv"),
+              "--summary-output", str(out / "ppo_validation_summary.csv"),
+          ]
+          subprocess.run(command, check=True)
+          PY
+
+      - name: Verify member provenance and seed boundary
+        env:
+          TRAINING_SEED: ${{ matrix.training_seed }}
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          import os
+          from pathlib import Path
+
+          seed = int(os.environ["TRAINING_SEED"])
+          design = json.loads(Path("configs/fjsp_ppo_validation_design.json").read_text())
+          root = Path("artifacts") / f"seed_{seed}"
+          with (root / "ppo_validation_runs.csv").open(newline="", encoding="utf-8") as handle:
+              rows = list(csv.DictReader(handle))
+          observed = [int(row["seed"]) for row in rows]
+          expected = list(range(41100, 41130))
+          assert observed == expected
+          assert all(row["policy"] == "MASKABLE_PPO" for row in rows)
+          assert all(int(row["training_seed"]) == seed for row in rows)
+          assert all(row["seed_regime"] == "validation" for row in rows)
+          assert max(observed) < design["final_test_seed_start"]
+          manifest = json.loads((root / "training_manifest.json").read_text())
+          assert manifest["algorithm"] == "MaskablePPO"
+          assert manifest["training_seed"] == seed
+          assert manifest["training_config"]["total_timesteps"] == 150000
+          assert manifest["runtime"]["sb3_contrib"] != "not-installed"
+          assert (root / "fjsp_maskable_ppo.zip").stat().st_size > 0
+          PY
+
+      - name: Upload Maskable PPO member artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-ppo-member-seed-${{ matrix.training_seed }}-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 90
+
+  aggregate:
+    needs: [plan, baseline-validation, train-validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install aggregation dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev]"
+
+      - name: Download frozen baseline panel
+        uses: actions/download-artifact@v4
+        with:
+          name: fjsp-ppo-baseline-${{ github.sha }}
+          path: baseline
+
+      - name: Download all Maskable PPO members
+        uses: actions/download-artifact@v4
+        with:
+          pattern: fjsp-ppo-member-seed-*-${{ github.sha }}
+          path: members
+          merge-multiple: true
+
+      - name: Aggregate multi-training-seed validation evidence
+        run: >-
+          python -m dmdtrl.fjsp_ppo_campaign
+          --config configs/fjsp_ppo_validation_design.json
+          --cpsat-freeze configs/fjsp_cpsat_validation_freeze.json
+          --baseline-root baseline
+          --members-root members
+          --members-output campaign/fjsp_ppo_training_seed_summary.csv
+          --runs-output campaign/fjsp_ppo_validation_runs.csv
+          --comparisons-output campaign/fjsp_ppo_member_comparisons.csv
+          --aggregate-comparisons-output campaign/fjsp_ppo_training_seed_comparisons.csv
+          --manifest-output campaign/fjsp_ppo_validation_manifest.json
+          --bootstrap 5000
+          --permutations 10000
+
+      - name: Verify campaign completeness and final-test embargo
+        run: |
+          python - <<'PY'
+          import csv
+          import json
+          from pathlib import Path
+
+          design = json.loads(Path("configs/fjsp_ppo_validation_design.json").read_text())
+          manifest = json.loads(Path("campaign/fjsp_ppo_validation_manifest.json").read_text())
+          with Path("campaign/fjsp_ppo_training_seed_summary.csv").open(newline="", encoding="utf-8") as handle:
+              members = list(csv.DictReader(handle))
+          with Path("campaign/fjsp_ppo_training_seed_comparisons.csv").open(newline="", encoding="utf-8") as handle:
+              comparisons = list(csv.DictReader(handle))
+          assert {int(row["training_seed"]) for row in members} == set(design["training_seeds"])
+          assert len(members) == 5
+          assert len(comparisons) == 3
+          assert all(int(row["n_training_seeds"]) == 5 for row in comparisons)
+          assert all(row["inference_unit"] == "training_seed" for row in comparisons)
+          assert manifest["final_test_used_for_selection"] is False
+          assert manifest["representative_training_seed"] in design["training_seeds"]
+          assert manifest["frozen_cpsat"]["selected_policy"] == "FJSP_CPSAT_H4_B100MS"
+          PY
+
+      - name: Show validation evidence
+        run: |
+          cat campaign/fjsp_ppo_training_seed_summary.csv
+          cat campaign/fjsp_ppo_training_seed_comparisons.csv
+          cat campaign/fjsp_ppo_validation_manifest.json
+
+      - name: Upload FJSP PPO validation campaign artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fjsp-ppo-validation-campaign-${{ github.sha }}
+          path: campaign/
+          if-no-files-found: error
+          retention-days: 90

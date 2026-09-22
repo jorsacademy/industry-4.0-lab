@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "status": "PROJECT_COMPLETE",
+  "completed_date": "2026-08-29",
+  "project": "dynamic-manufacturing-digital-twin-rl",
+  "research_identity": "Industrial Decision Intelligence: OR + Simulation/Digital Twin + RL + Statistical Validation",
+  "completion_scope": {
+    "phase4_parallel_machine_campaign": "complete_and_frozen",
+    "phase5_true_fjsp_campaign": "complete_and_frozen",
+    "decision_twin_service_layer": "optional_extension_not_required_for_project_completion",
+    "further_model_selection": false,
+    "further_final_test_access": false
+  },
+  "phase5_final_benchmark": {
+    "source_pull_request": 28,
+    "merged_implementation_sha": "a1071cfcea3f2b3e1b206ef3eb53325258dced03",
+    "workflow_run_id": 33271196539,
+    "workflow_pr_merge_sha": "a503d8dbcc3baa869fb983aefd14e5bcaece0b80",
+    "artifact_id": 9720170969,
+    "artifact_name": "fjsp-final-frozen-baselines-a503d8dbcc3baa869fb983aefd14e5bcaece0b80",
+    "artifact_sha256": "8cdef3fb72df4f88156043b1e2aa54daf3f0ad92493385dca58bf1e814a4abf9",
+    "final_seed_start": 42000,
+    "final_seed_end": 42099,
+    "final_seed_count": 100,
+    "episode_rows": 900,
+    "final_block_consumed": true,
+    "no_retuning_after_final": true,
+    "primary_metric": "weighted_tardiness",
+    "winner": "ROLLING_HORIZON_CPSAT",
+    "frozen_winner_configuration": "FJSP_CPSAT_H4_B100MS",
+    "ranking": [
+      {"rank": 1, "policy": "ROLLING_HORIZON_CPSAT", "weighted_tardiness_mean": 23.467215669499446, "weighted_tardiness_ci_low": 19.95130505303954, "weighted_tardiness_ci_high": 27.129379691724758, "mean_decision_time_ms": 23.493260706229375, "fallback_rate": 0.0},
+      {"rank": 2, "policy": "MINIMUM_SLACK", "weighted_tardiness_mean": 30.413395846297632, "weighted_tardiness_ci_low": 25.4342308897141, "weighted_tardiness_ci_high": 35.79921517299724, "mean_decision_time_ms": 0.01394470337713517, "fallback_rate": 0.0},
+      {"rank": 3, "policy": "EARLIEST_DUE_DATE", "weighted_tardiness_mean": 32.43700025316471, "weighted_tardiness_ci_low": 27.08841274246236, "weighted_tardiness_ci_high": 38.40635793231215, "mean_decision_time_ms": 0.009017033218385023, "fallback_rate": 0.0},
+      {"rank": 4, "policy": "CRITICAL_RATIO", "weighted_tardiness_mean": 36.57159113925021, "mean_decision_time_ms": 0.014283564226442624, "fallback_rate": 0.0},
+      {"rank": 5, "policy": "WEIGHTED_TARDINESS_RISK", "weighted_tardiness_mean": 37.080671145541736, "mean_decision_time_ms": 0.013650398698020141, "fallback_rate": 0.0},
+      {"rank": 6, "policy": "HIGHEST_PRIORITY", "weighted_tardiness_mean": 43.14202791657105, "mean_decision_time_ms": 0.010006674164339131, "fallback_rate": 0.0},
+      {"rank": 7, "policy": "SHORTEST_PROCESSING", "weighted_tardiness_mean": 57.31509685370247, "mean_decision_time_ms": 0.009658860017947555, "fallback_rate": 0.0},
+      {"rank": 8, "policy": "SAME_FAMILY_FIRST", "weighted_tardiness_mean": 74.29010204493896, "mean_decision_time_ms": 0.010636812465528214, "fallback_rate": 0.0},
+      {"rank": 9, "policy": "MINIMUM_SETUP", "weighted_tardiness_mean": 75.15942090331521, "mean_decision_time_ms": 0.010113484290023981, "fallback_rate": 0.0}
+    ],
+    "key_paired_comparisons": {
+      "vs_MINIMUM_SLACK": {
+        "mean_wtt_improvement": 6.946180176798184,
+        "percent_improvement": 22.83921273343692,
+        "ci_low": 2.7669708974571217,
+        "ci_high": 11.42618115964787,
+        "p_value": 0.0007999200079992001,
+        "effect_size_dz": 0.31765314747144285,
+        "probability_of_superiority": 0.6,
+        "n_pairs": 100
+      },
+      "vs_EARLIEST_DUE_DATE": {
+        "mean_wtt_improvement": 8.969784583665264,
+        "percent_improvement": 27.65294112790263,
+        "ci_low": 4.663341010676365,
+        "ci_high": 13.726533483737745,
+        "p_value": 0.00019998000199980003,
+        "effect_size_dz": 0.3857771083822489,
+        "probability_of_superiority": 0.59,
+        "n_pairs": 100
+      }
+    }
+  },
+  "rl_evidence": {
+    "direct_action_maskable_ppo": {
+      "status": "rejected_at_validation",
+      "validation_seed_start": 41100,
+      "validation_seed_end": 41129,
+      "training_seeds": [701, 1701, 2701, 3701, 4701],
+      "timesteps_per_seed": 150000,
+      "weighted_tardiness_training_mean": 82.51182222324977,
+      "vs_cpsat_mean_improvement": -62.0958941278332,
+      "vs_cpsat_ci_low": -63.44982015940184,
+      "vs_cpsat_ci_high": -60.36197117388904,
+      "accepted_for_final": false,
+      "source": "configs/fjsp_direct_ppo_validation_freeze.json"
+    },
+    "operator_selection_ppo_v1": {
+      "status": "rejected_at_validation",
+      "validation_seed_start": 41200,
+      "validation_seed_end": 41229,
+      "training_seeds": [901, 1901, 2901, 3901, 4901],
+      "timesteps_per_seed": 150000,
+      "weighted_tardiness_training_mean": 38.46177305174083,
+      "vs_weighted_tardiness_risk_mean_improvement": -6.637142839973732,
+      "vs_weighted_tardiness_risk_ci_low": -9.92160848462151,
+      "vs_weighted_tardiness_risk_ci_high": -3.5945158579424956,
+      "vs_cpsat_mean_improvement": -17.33368430168942,
+      "vs_cpsat_ci_low": -20.618149946337194,
+      "vs_cpsat_ci_high": -14.16964573300736,
+      "promoted_to_final": false,
+      "source": "configs/fjsp_hh_validation_decision.json"
+    },
+    "final_rl_test_performed": false,
+    "interpretation": "Both RL formulations were implemented and evaluated reproducibly, but neither passed its independent validation gate. They were therefore excluded from the final FJSP benchmark instead of being cherry-picked or retuned on final data."
+  },
+  "archived_extension": {
+    "name": "operator_selection_v2",
+    "status": "archived_without_merge_or_validation",
+    "pull_request": 27,
+    "validation_block_41300_41329_opened": false,
+    "part_of_completed_project": false
+  },
+  "final_conclusion": {
+    "primary": "For the completed true-FJSP decision twin, the frozen rolling-horizon CP-SAT controller provides the best out-of-sample weighted-tardiness performance among the nine frozen non-RL controllers.",
+    "operational_tradeoff": "MINIMUM_SLACK is the strongest fixed heuristic and is roughly three orders of magnitude faster online, while CP-SAT reduces mean weighted tardiness by 22.84% relative to it on 100 unseen final instances with zero fallback.",
+    "rl_conclusion": "The tested RL controllers do not justify promotion over strong OR/heuristic baselines in this formulation; that negative result is retained as part of the project evidence.",
+    "project_state": "portfolio_ready_no_further_research_required"
+  }
+}
