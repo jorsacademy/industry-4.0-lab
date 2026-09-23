@@ -147,6 +147,64 @@ python -m src.early_warning --config config.yaml
 
 This writes `reports/early_warning_tradeoff.csv`, allowing direct comparison of defect detection quality as more of the manufacturing route becomes observable.
 
+
+## Active learning for adaptive inspection
+
+The same chronological feature table can now be used to study how many part labels must be purchased before a quality model becomes useful. The benchmark keeps the future test block fixed and exposes only the earlier production pool to the acquisition policy.
+
+Implemented query policies are:
+
+- random inspection;
+- probability uncertainty sampling;
+- feature-space diversity sampling;
+- a hybrid uncertainty + diversity score.
+
+The benchmark reports label count, number of observed positive labels, average precision, F1, recall, and the fraction of future defects captured when only the highest-risk 1% of parts are inspected.
+
+Run it after building the full-route feature table:
+
+~~~bash
+python scripts/run_active_learning.py \
+  --initial-labels 2000 \
+  --query-batch 500 \
+  --rounds 6
+~~~
+
+Output:
+
+~~~text
+reports/active_learning_curve.csv
+~~~
+
+The simulator already knows all historical labels, but a query strategy receives a label only after selecting that row. Test labels are never queried. Binary entropy and binary margin sampling are monotone-equivalent rankings, so the benchmark uses one probability-uncertainty policy instead of reporting duplicate methods under different names.
+
+## Few-label adaptation under temporal shift
+
+A second extension asks a different question: if a later production regime can supply only a handful of labeled good and defective parts, how much does supervised adaptation help relative to the earlier source model?
+
+The protocol uses:
+
+- the chronological training block as the source domain;
+- the later selection + calibration blocks as the adaptation pool;
+- the untouched future test block for evaluation;
+- controlled k-per-class shots from the adaptation pool;
+- source-only, target-only, and source + weighted-few-label models.
+
+Run:
+
+~~~bash
+python scripts/run_few_label.py --repeats 5 --target-weight 8
+~~~
+
+Output:
+
+~~~text
+reports/few_label_adaptation.csv
+~~~
+
+This is deliberately described as **few-label temporal adaptation**, not as a literal new-product few-shot benchmark. The Bosch competition data do not expose product-family identities, so claiming cross-product transfer would not be supported by the dataset.
+
+
 ## Repository layout
 
 ```text
@@ -166,7 +224,9 @@ bosch-production-line/
 │   └── README.md
 ├── scripts/
 │   ├── download_data.py
-│   └── validate_data.py
+│   ├── validate_data.py
+│   ├── run_active_learning.py
+│   └── run_few_label.py
 ├── src/
 │   ├── __init__.py
 │   ├── schema.py
@@ -174,6 +234,8 @@ bosch-production-line/
 │   ├── features.py
 │   ├── build_features.py
 │   ├── modeling.py
+│   ├── active_learning.py
+│   ├── few_label.py
 │   ├── train.py
 │   └── early_warning.py
 └── tests/
