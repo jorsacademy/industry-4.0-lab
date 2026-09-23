@@ -100,6 +100,45 @@ RPM diagnostics also show weaker transfer in the upper evaluation-speed band: ma
 
 A single-sensor post-selection diagnostic found sensor 1 alone at macro-F1 `0.4749`, above the all-sensor result of `0.4263`. Because this comparison was made after opening `E`, the project deliberately does **not** switch the final model to sensor 1 or report that value as a new selected benchmark.
 
+
+## Cross-session domain adaptation extension
+
+The original benchmark deliberately freezes model selection on session D and reports the full session E result once. That scientific result remains unchanged.
+
+A separate adaptation experiment is now available for the operational question that follows from the observed D-to-E shift: **what happens if a small prefix of the new session is available for unsupervised alignment and, optionally, a few labeled examples per severity?**
+
+For this extension only, each E recording is split chronologically:
+
+~~~text
+first 25% of windows  -> adaptation pool
+remaining 75%         -> later evaluation
+~~~
+
+The extension compares:
+
+- **source_only** — train on D and deploy directly to the later E suffix;
+- **coral_unsupervised** — align D covariance to the unlabeled E adaptation prefix with CORAL;
+- **target_only_few_shot** — fit only on k labeled target examples per severity;
+- **coral_plus_few_shot** — CORAL-aligned D data plus weighted labeled target examples.
+
+Run after the standard feature table has been created:
+
+~~~bash
+python scripts/run_domain_adaptation.py \
+  --representation compact \
+  --adaptation-fraction 0.25 \
+  --repeats 5
+~~~
+
+Output:
+
+~~~text
+reports/domain_adaptation.csv
+~~~
+
+This benchmark is **cross-session adaptation on the same laboratory drive train**. It must not be described as cross-machine, cross-factory, or fleet-wide transfer learning. The adaptation experiment also has a different evaluation contract from the original one-shot E benchmark, so its results should be reported separately rather than used to overwrite the original external-session score.
+
+
 ## Reproduce
 
 ```bash
@@ -110,6 +149,8 @@ pip install -r requirements.txt
 python scripts/download_data.py
 python scripts/validate_data.py
 python -m src.train --config config.yaml
+# optional adaptation study
+python scripts/run_domain_adaptation.py --representation compact
 ```
 
 Windows activation:
