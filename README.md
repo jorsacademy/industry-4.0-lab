@@ -16,6 +16,13 @@ A curated portfolio of applied Industry 4.0 projects built around cyber-physical
 | 08 | Rotating Machinery | [Rotating-Shaft Unbalance — Independent-Session Generalization](predictive-maintenance/rotating-shaft-unbalance-generalization/) | 4096 Hz three-sensor vibration with measured RPM across separate D/E sessions and five unbalance severities | Cross-session fault-severity diagnosis, order-domain modeling, calibration, and RPM-regime diagnostics | Ready |
 | 09 | Continuous Process Monitoring | [Multi-Stage Continuous Flow — Lag-Aware Quality Forecasting & Drift Monitoring](process-monitoring/multistage-continuous-flow-quality-forecast/) | 1 Hz real production-line telemetry across parallel/serial stages with 15 output measurements per stage | Leakage-safe horizon selection, downstream quality forecasting, conformal uncertainty, and drift diagnostics | Ready |
 | 10 | Extrusion Process Monitoring | [Plastic Extrusion — Active-Line Interruption Early Warning](process-monitoring/plastic-extrusion-interruption-early-warning/) | Year-long real extrusion telemetry with 470 variables covering extruders, haul-off, winding, thickness and output | Leakage-safe 20-minute interruption-proxy ranking, frozen-threshold evaluation and drift diagnostics | Ready |
+| 11 | Process Optimization | [Welding Process Parameter Optimization](process-optimization/welding-process-parameter-optimization/) | Physics-informed synthetic current/voltage/speed/wire/gas/process context | Strength/porosity/penetration surrogate modeling and constrained set-point search | Prototype |
+| 12 | Process Optimization | [Sheet-Metal Stamping Process Optimization](process-optimization/sheet-metal-stamping-process-optimization/) | Physics-informed synthetic press, sheet and lubrication variables | Springback/thinning/defect-risk trade-offs under material context | Prototype |
+| 13 | Process Optimization | [Laser Cutting Process Optimization](process-optimization/laser-cutting-process-optimization/) | Physics-informed synthetic laser, gas, focus and sheet variables | Roughness/burr/kerf/energy multi-response parameter selection | Prototype |
+| 14 | Process Optimization | [Heat-Treatment Profile Optimization](process-optimization/heat-treatment-profile-optimization/) | Physics-informed synthetic thermal-cycle and material variables | Strength/hardness targets with distortion and energy trade-offs | Prototype |
+| 15 | Adaptive Process Control | [Grinding Process Adaptive Control](process-optimization/grinding-process-adaptive-control/) | Physics-informed synthetic grinding settings plus wheel-condition state | Re-optimize settings as wheel age changes while controlling burn and roughness | Prototype |
+| 16 | Process Optimization | [Machining Coolant Flow Optimization](process-optimization/machining-coolant-flow-optimization/) | Physics-informed synthetic machining-load and coolant variables | Tool-temperature, wear, finish and pump-energy trade-offs | Prototype |
+| 17 | Smart Quality | [Casting Quality Multimodal Prediction](quality-monitoring/casting-quality-multimodal-prediction/) | Synthetic casting-process context plus synthetic NDT/vision scores | Compare process-only, inspection-only and multimodal defect prediction | Prototype |
 
 ## Inclusion criteria
 
@@ -30,7 +37,7 @@ Projects are included only when they have a clear industrial data or cyber-physi
 - automated test/inspection measurements tied to real production lots, timestamps, assets, or traceability;
 - multimodal industrial data where vision is tied to real production-system telemetry or traceability.
 
-Synthetic or purely illustrative computer-vision exercises without a meaningful cyber-physical or industrial telemetry layer are excluded.
+Synthetic or purely illustrative computer-vision exercises without a meaningful cyber-physical or industrial telemetry layer are excluded. Physics-informed synthetic process prototypes may be included when they model explicit manufacturing variables and decision constraints; they are labeled **Prototype** and are not presented as validated industrial benchmarks.
 
 ## Repository principles
 
