@@ -1,5 +1,22 @@
 # Industry 4.0 Lab
 
+<!-- portfolio-umbrella:start -->
+## Portfolio role
+
+This repository is the primary umbrella repository for this Jors Academy research area. Related projects have been consolidated under `projects/` so the methods, implementations, experiments, and case studies can be maintained and explored from one place.
+
+### Included projects
+
+- [`dynamic-manufacturing-digital-twin-rl`](projects/dynamic-manufacturing-digital-twin-rl/)
+- [`industrial-digital-twin-system-optimization-python`](projects/industrial-digital-twin-system-optimization-python/)
+- [`industrial-maintenance-markov-decision-process-python`](projects/industrial-maintenance-markov-decision-process-python/)
+- [`industrial-maintenance-scheduling-optimizer`](projects/industrial-maintenance-scheduling-optimizer/)
+- [`predictive-maintenance-reinforcement-learning`](projects/predictive-maintenance-reinforcement-learning/)
+- [`predictive-maintenance-sensor-data-optimization-python`](projects/predictive-maintenance-sensor-data-optimization-python/)
+
+Each consolidated project keeps its own files and a `SOURCE_REPOSITORY.md` provenance record. The snapshot preserves the source repository's default-branch files at consolidation time; repository-level history and metadata remain separate from the snapshot.
+<!-- portfolio-umbrella:end -->
+
 A curated portfolio of applied Industry 4.0 projects built around cyber-physical production systems, industrial sensing, IIoT, PLC/SCADA data, condition monitoring, predictive maintenance, process analytics, digital twins, and optimization.
 
 ## Project map
