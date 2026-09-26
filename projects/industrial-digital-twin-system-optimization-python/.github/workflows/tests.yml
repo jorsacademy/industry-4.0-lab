@@ -28,6 +28,9 @@ jobs:
       - name: Run regression suite
         run: python -m unittest discover -s tests -v
 
+      - name: Run physics-informed sparse-calibration smoke benchmark
+        run: python physics_informed_surrogate.py --samples 80 --noise-kw 3.0 --repeats 2
+
       - name: Run full machine-to-system optimization
         run: |
           python industrial_compressed_air_digital_twin.py \
