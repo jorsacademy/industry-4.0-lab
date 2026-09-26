@@ -286,6 +286,52 @@ It checks:
 
 The true-physics replay also independently reconstructs the complete storage trajectory and verifies material-balance closure.
 
+
+## Physics-informed sparse-data surrogate extension
+
+The repository now includes an additional calibration path for cases where only a small amount of on-state telemetry is available.
+
+The baseline remains the unconstrained data-only linear fit:
+
+~~~text
+power = intercept + fitted_slope * flow
+~~~
+
+The physics-informed surrogate instead parameterizes the same engineering relation as:
+
+~~~text
+power
+=
+learned idle power
++
+OEM nominal marginal coefficient
+* learned degradation factor
+* flow
+~~~
+
+and adds four pieces of engineering structure:
+
+- off-state power is fixed to zero;
+- idle power is constrained non-negative;
+- degradation is constrained non-negative;
+- soft priors stabilize idle power around the design value and degradation around the undegraded state.
+
+The priors are regularizers, not asserted physical truth. Telemetry can move both parameters. The resulting surrogate can be converted directly into the existing `CompressorTwin` object and passed to the same MILP dispatch optimizer.
+
+A repeated sparse-data benchmark compares the data-only and physics-informed calibrations at multiple training-set sizes:
+
+~~~bash
+python physics_informed_surrogate.py \
+  --samples 240 \
+  --noise-kw 3.0 \
+  --repeats 20
+~~~
+
+The output reports held-out RMSE distributions for each compressor and training size. The benchmark does not assume that the physics-informed fit must win; it is intended to quantify when engineering priors help or hurt under sparse noisy calibration.
+
+This extension is **physics-informed regression / grey-box calibration**, not a PINN, Neural ODE, or PIKAN implementation. Those architectures would only be justified here if the plant model contained meaningful continuous dynamics or governing differential equations that the network needed to satisfy.
+
+
 ## Regression tests
 
 The suite covers:
@@ -296,7 +342,10 @@ The suite covers:
 - independent dispatch-feasibility audit;
 - storage-balance replay;
 - baseline feasibility;
-- demand/tariff profile integrity.
+- demand/tariff profile integrity;
+- physics-informed sparse-data parameter constraints;
+- repeated sparse-calibration benchmark integrity;
+- compatibility of the learned physics-informed surrogate with the existing system optimizer.
 
 ## Run
 
@@ -310,6 +359,12 @@ Self-test:
 
 ```bash
 python industrial_compressed_air_digital_twin.py --self-test
+```
+
+Sparse-data physics-informed calibration benchmark:
+
+```bash
+python physics_informed_surrogate.py --samples 240 --noise-kw 3.0 --repeats 20
 ```
 
 Regression tests:
